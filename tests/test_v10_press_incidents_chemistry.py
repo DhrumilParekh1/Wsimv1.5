@@ -150,6 +150,11 @@ def test_week_two_seeds_new_inbox_incidents_after_show():
     decline_media(s)
     for sponsor in sponsor_offers(s):
         respond_sponsor(s,sponsor['id'],'reject')
+    from wrestling_sim.press_and_incidents import conference,answer_press
+    session=conference(s)
+    for question in session['questions']:
+        if question['answer'] is None:
+            answer_press(s,question['id'],'candid')
     assert not inbox_blockers(s)
     result=advance_week(s)
     assert result['week']==2
