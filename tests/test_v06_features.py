@@ -18,6 +18,7 @@ from wrestling_sim.storage import save_game, load_game
 
 
 def complete_pending(state):
+    from wrestling_sim.press_and_incidents import conference,answer_press
     session=conference(state)
     for question in session['questions']:
         if question['answer'] is None:
@@ -27,7 +28,7 @@ def complete_pending(state):
     decline_media(state)
     for offer in sponsor_offers(state):
         respond_sponsor(state,offer['id'],'reject')
-    from wrestling_sim.press_and_incidents import pending_incidents,answer_incident,conference,answer_press
+    from wrestling_sim.press_and_incidents import pending_incidents,answer_incident
     for issue in list(pending_incidents(state)):
         answer_incident(state,issue['id'],'support')
     from wrestling_sim.front_office import concerns,answer_concern
