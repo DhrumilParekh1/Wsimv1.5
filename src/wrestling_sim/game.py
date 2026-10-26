@@ -72,6 +72,14 @@ def book_show(state: GameState, name: str, segments: list[Segment], duration: in
         if segment.role_turn_wrestler_id and state.wrestlers[segment.role_turn_wrestler_id].role == segment.role_turn_to:
             raise ValueError('The wrestler is already in that role')
         if segment.storyline_id:
+            # Audit explicit deviations from the locked creative room strategy.
+            scene=state.scenes.get(f'scene-{state.year}-{state.week}-{segment.storyline_id}')
+            if scene and scene.get('status')=='complete' and scene.get('choices'):
+                locked={'mind_games':'slow_burn','challenge':'escalate','shock':'swerve'}.get(scene['choices'][0])
+                if locked and segment.creative_direction!=locked:
+                    state.activity_log.append({'type':'creative_override','year':state.year,'week':state.week,
+                        'storyline_id':segment.storyline_id,'locked':locked,
+                        'booked':segment.creative_direction,'segment':segment.title})
             storyline_slots[segment.storyline_id] = storyline_slots.get(segment.storyline_id, 0) + 1
             if storyline_slots[segment.storyline_id] > 2:
                 raise ValueError("An active storyline may occupy at most two card slots")
