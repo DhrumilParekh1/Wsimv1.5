@@ -446,6 +446,14 @@ def advance_week(state: GameState) -> dict:
     state.financial_history.append({"year": state.year, "week": state.week,
                                     "reason": "weekly_upkeep", "salaries": salaries,
                                     "fixed_costs": fixed_cost, "net": -salaries - fixed_cost})
+    # Rolling four-week cash-flow signal for sustained, unsustainable spending.
+    recent=state.financial_history[-4:]
+    cash_flows=[item.get('net',0) for item in recent if isinstance(item.get('net'),(int,float))]
+    if len(cash_flows)>=3:
+        avg=sum(cash_flows)/len(cash_flows)
+        if avg<0 and state.player_company.money < max(1,-avg)*8:
+            state.player_company.sponsor_interest=clamp(state.player_company.sponsor_interest-.3)
+            state.news.append('Financial warning: projected cash reserves are under eight weeks at recent net spending.')
     messages = progress_week(state, rng)
     from .injuries import advance_recovery
     messages.extend(advance_recovery(state))
