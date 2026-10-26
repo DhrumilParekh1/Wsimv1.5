@@ -44,14 +44,17 @@ def meeting_view(state, session):
     return {**session,'wrestler_name':w.name,'portrait_id':w.id,'personality':w.personality,
             'morale':round(w.morale,2),'owner_relationship':round(w.owner_relationship,2),
             'options':([dict(id=i,label=l,hint=h) for i,l,h in CHOICES[session['topic']]] if session['step']==0 else
-                       [{'id':'support','label':'End positively','hint':'Finish with mutual respect.'},
-                        {'id':'firm','label':'Set firm expectations','hint':'Emphasise accountability.'}] if session['status']=='active' else [])}
+                       [{'id':'listen','label':'Explore the underlying concern','hint':'May reveal what the wrestler expects.'},
+                        {'id':'compromise','label':'Propose a specific compromise','hint':'Can increase goodwill without guarantees.'},
+                        {'id':'firm','label':'Maintain the current position','hint':'Emphasise existing obligations.'}] if session['step']==1 and session['status']=='active' else
+                       [{'id':'support','label':'Conclude positively','hint':'Finish with mutual respect.'},
+                        {'id':'firm','label':'Conclude with firm expectations','hint':'Emphasise accountability.'}] if session['status']=='active' else [])}
 
 
 def answer_meeting(state, session_id: str, choice_id: str):
     s=state.dialogue_sessions.get(session_id)
     if not s or s['status']!='active':raise ValueError('Meeting is closed')
-    if s['step']>1:raise ValueError('Meeting is already complete')
+    if s['step']>2:raise ValueError('Meeting is already complete')
     valid={x['id'] for x in meeting_view(state,s)['options']}
     if choice_id not in valid:raise ValueError('Invalid dialogue choice')
     w=state.wrestlers[s['wrestler_id']]
@@ -79,12 +82,13 @@ def answer_meeting(state, session_id: str, choice_id: str):
     if choice_id=='negotiate':s['open_contract']=True
     spoken=(f'{w.name} seems reassured and agrees to the direction.' if accepted else
             f'{w.name} remains unconvinced. The conversation has become more tense.')
-    s['lines'] += [dict(speaker='You',text=next(x[1] for x in (CHOICES[s['topic']] if s['step']==0 else [('support','End positively',''),('firm','Set firm expectations','')]) if x[0]==choice_id)),
+    s['lines'] += [dict(speaker='You',text=next(x[1] for x in (CHOICES[s['topic']] if s['step']==0 else [('listen','Explore the concern',''),('compromise','Offer a compromise',''),('support','Conclude positively',''),('firm','Set firm expectations','')]) if x[0]==choice_id)),
                    dict(speaker=w.name,text=spoken)]
     s['effects'][f'step_{s["step"]}']=dict(morale=round(morale_delta,2),relationship=round(relation_delta,2),accepted=accepted)
     if s['step']==0:s['opening_choice']=choice_id
+    s.setdefault('decisions',[]).append({'round':s['step']+1,'choice':choice_id,'accepted':accepted})
     s['step']+=1
-    if s['step']>=2:
+    if s['step']>=3:
         s['status']='complete'
         if s.get('concern_id'):
             from .front_office import answer_concern
