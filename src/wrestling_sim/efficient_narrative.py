@@ -60,6 +60,7 @@ def auto_show_fast(state, show_id: str, progress=None):
             texts=obj.get('posts',[])
             if len(texts)!=len(batch) or any(not isinstance(t,str) or not 8<=len(t.strip())<=190 or '<' in t for t in texts):
                 raise ValueError('Invalid fan posts response')
+            seen={p['text'].strip().casefold() for p in posts[:offset] if p.get('source')=='ollama'}
             for post,text in zip(batch,texts):
                 try:
                     clean=_clean_fan_post(text,post['sentiment'])
@@ -67,7 +68,13 @@ def auto_show_fast(state, show_id: str, progress=None):
                     continue
                 match=next((seg for seg in report['segments'] if seg['title']==post['segment']),None)
                 analysis=(match.get('analysis') or analyze_segment(match)) if match else {'sentiment':post['sentiment']}
+                # Never publish near-identical AI reactions within the same show.
+                # Keep the original deterministic post when a rewrite is repeated.
+                normalized=' '.join(clean.casefold().split())
+                if normalized in seen:
+                    continue
                 if consistent_ai_reaction(clean,analysis):
+                    seen.add(normalized)
                     post['text']=clean;post['source']='ollama';changed+=1
         return changed
 
