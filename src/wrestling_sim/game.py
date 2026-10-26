@@ -385,7 +385,15 @@ def inbox_blockers(state: GameState) -> list[dict]:
     from .management import media_opportunity, creative_tasks
     from .front_office import concerns
     from .press_and_incidents import pending_incidents
-    issues = [{'kind':'talent','id':i['id'],'title':i['title']} for i in concerns(state)]
+    from .press_and_incidents import conference
+    press = conference(state)
+    if press and not press['completed']:
+        remaining = sum(q['answer'] is None for q in press['questions'])
+        issues = [{'kind':'press','id':press['id'],
+                   'title':f'Weekly press conference: {remaining} questions unanswered'}]
+    else:
+        issues = []
+    issues += [{'kind':'talent','id':i['id'],'title':i['title']} for i in concerns(state)]
     issues += [{'kind':'incident','id':i['id'],'title':i['title']} for i in pending_incidents(state)]
     issues += [{'kind': 'decision', 'id': e['id'], 'title': e['title']}
               for e in available_decisions(state)]
@@ -407,6 +415,12 @@ def inbox_blockers(state: GameState) -> list[dict]:
 def advance_week(state: GameState) -> dict:
     if not any(show.week == state.week and show.simulated for show in state.shows.values()):
         raise ValueError(f"You must book and simulate a completed {state.player_company.show_minutes-20}–{state.player_company.show_minutes} minute show before advancing the week")
+    # The press conference is mandatory even when the Inbox UI is bypassed.
+    from .press_and_incidents import conference
+    weekly_press = conference(state)
+    if weekly_press and not weekly_press['completed']:
+        remaining = sum(q['answer'] is None for q in weekly_press['questions'])
+        raise ValueError(f'Complete the Press Conference before advancing ({remaining} questions remaining)')
     blockers = inbox_blockers(state)
     if blockers:
         raise ValueError('Resolve every Inbox item before advancing: ' + ', '.join(item['title'] for item in blockers[:5]))
