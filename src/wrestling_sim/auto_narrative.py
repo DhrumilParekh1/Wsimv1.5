@@ -102,6 +102,13 @@ def auto_show(state: GameState, show_id: str):
         report['ollama_status']='generated'
         return {'source':'ollama','highlights':len(beats),'posts':len(posts)}
     except (ValueError,TypeError,KeyError) as exc:
+        # A connection failure is different from a malformed generation. Do not
+        # make additional model calls through an unrelated fallback generator.
+        if any(word in str(exc).lower() for word in ('model not running', 'connection refused',
+                'ollama is disabled', 'ollama is unavailable', 'timed out', 'connection error')):
+            _alert(state,f'show {show_id} batch',exc)
+            report['ollama_status']='unavailable'
+            return {'source':'unavailable','error':str(exc)}
         # The full response is a demanding schema for small local models.
         # A bad highlight should NOT suppress fan reporting or fan social.
         _alert(state,f'show {show_id} batch',exc)
