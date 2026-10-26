@@ -18,6 +18,11 @@ from wrestling_sim.storage import save_game, load_game
 
 
 def complete_pending(state):
+    from wrestling_sim.press_and_incidents import conference,answer_press
+    session=conference(state)
+    for question in session['questions']:
+        if question['answer'] is None:
+            answer_press(state,question['id'],'candid')
     for d in list(available_decisions(state)):
         choose_option(state,d['id'],d['options'][0]['id'])
     decline_media(state)
@@ -54,7 +59,7 @@ def test_style_combos_validate_and_change_rating():
 def test_inbox_blockers_server_enforced_and_can_clear():
     s=new_game()
     show=book_show(s,'Show',full_show());simulate_show(s,show.id)
-    with pytest.raises(ValueError,match='Inbox'):
+    with pytest.raises(ValueError,match='Press Conference'):
         advance_week(s)
     complete_pending(s)
     assert not inbox_blockers(s)

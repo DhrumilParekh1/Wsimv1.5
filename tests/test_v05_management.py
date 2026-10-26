@@ -236,6 +236,12 @@ def test_promised_beat_only_fulfills_with_correct_wrestlers():
 
 
 def resolve_inbox_for_test(state):
+    from wrestling_sim.press_and_incidents import conference, answer_press
+    session=conference(state)
+    if session:
+        for question in session['questions']:
+            if question['answer'] is None:
+                answer_press(state,question['id'],'candid')
     """Explicitly respond to weekly mandatory items in legacy progression tests."""
     from wrestling_sim.decisions import available_decisions, choose_option
     from wrestling_sim.management import decline_media, media_opportunity, creative_tasks, cancel_creative_commitment
