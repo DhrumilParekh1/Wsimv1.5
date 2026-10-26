@@ -168,7 +168,8 @@ def enhance_dialogue(state: GameState, kind: str, session_id: str) -> dict:
     if target is None:
         raise ValueError('No wrestler reply has been recorded yet')
     if target.get('ai_flavour'):
-        return {'text':target['ai_flavour'],'source':'ollama','already_generated':True}
+        return {'text':target['ai_flavour'],'source':'ollama','already_generated':True,
+                'canonical_reply':target['text'],'immutable_outcome':True,'kind':kind,'session_id':session_id}
     from .memories import relevant_memories
     facts={
         'recent_memories':[m['description'] for m in relevant_memories(state,[wrestler.id],limit=5)],

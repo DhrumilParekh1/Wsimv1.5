@@ -5,7 +5,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from .efficient_narrative import auto_show_fast
 
-_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='ringside-ollama')
+_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix='ringside-ollama')
 _jobs = {}
 _guard = threading.RLock()
 
