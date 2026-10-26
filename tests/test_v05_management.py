@@ -105,9 +105,11 @@ def test_meetings_are_multistep_persistent_and_nonrepeatable():
     assert meeting['status']=='active' and len(meeting['options'])==3
     first=answer_meeting(s,meeting['id'],'promise')
     assert first['step']==1 and first['status']=='active'
+    middle=answer_meeting(s,meeting['id'],'listen')
+    assert middle['step']==2 and middle['status']=='active'
     done=answer_meeting(s,meeting['id'],'support')
     assert done['status']=='complete'
-    assert len(done['lines'])==5
+    assert len(done['lines'])==7
     assert len(s.interactions)==1
     with pytest.raises(ValueError): begin_meeting(s,'steel','morale')
 
