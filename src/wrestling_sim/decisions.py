@@ -32,18 +32,39 @@ def available_decisions(state: GameState) -> list[dict]:
             ],
             'storyline_id': story.id,
         })
-    events.append({
-        'id': _event_id(state, 'locker_room'), 'kind': 'locker_room', 'icon': '🎙',
-        'eyebrow': 'BACKSTAGE', 'title': f'{star.name} wants a word',
-        'description': f'{star.name} believes their contributions deserve more attention. They want to know where they stand in your plans.',
-        'involved_ids': [star.id],
-        'options': [
-            {'id': 'promise', 'label': 'Promise a bigger spotlight', 'hint': 'Raises expectations and morale'},
-            {'id': 'listen', 'label': 'Listen without making promises', 'hint': 'A measured response'},
-            {'id': 'dismiss', 'label': 'Tell them to earn it', 'hint': 'Could test the relationship'},
-        ],
-        'wrestler_id': star.id,
-    })
+    # A complaint needs a real trigger; ambition alone is not evidence of discontent.
+    # Track cooldown through prior resolved decisions, including old saved campaigns.
+    eligible = []
+    for wrestler in roster:
+        previous = [entry for entry in state.activity_log if entry.get('type') == 'decision'
+                    and entry.get('event_id','').endswith('-locker_room')
+                    and wrestler.name in entry.get('headline','')]
+        last = max((entry.get('year', state.year)*52 + entry.get('week', 0) for entry in previous), default=-999)
+        now = state.year*52 + state.week
+        if now-last < 6:
+            continue
+        grievances = 0
+        if wrestler.morale < 10: grievances += 2
+        if wrestler.owner_relationship < 9: grievances += 2
+        if wrestler.wants_release: grievances += 2
+        if wrestler.attributes['ambition'] >= 21 and wrestler.morale < 14: grievances += 1
+        if grievances >= 2:
+            eligible.append((grievances, wrestler))
+    if eligible:
+        eligible.sort(key=lambda entry: (-entry[0], entry[1].id))
+        star = eligible[0][1]
+        events.append({
+            'id': _event_id(state, 'locker_room'), 'kind': 'locker_room', 'icon': '🎙',
+            'eyebrow': 'BACKSTAGE', 'title': f'{star.name} wants a word',
+            'description': f'{star.name} believes their contributions deserve more attention. They want to know where they stand in your plans.',
+            'involved_ids': [star.id],
+            'options': [
+                {'id': 'promise', 'label': 'Promise a bigger spotlight', 'hint': 'Raises expectations and morale'},
+                {'id': 'listen', 'label': 'Listen without making promises', 'hint': 'A measured response'},
+                {'id': 'dismiss', 'label': 'Tell them to earn it', 'hint': 'Could test the relationship'},
+            ],
+            'wrestler_id': star.id,
+        })
     if state.week % 3 == 0 and len(roster) >= 2:
         first, second = sorted(roster, key=lambda w: (w.owner_relationship + w.morale, w.id))[:2]
         events.append({
