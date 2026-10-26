@@ -45,6 +45,7 @@ def test_private_manager_meeting_resolves_concern():
     concern=next(c for c in s.talent_concerns if c['wrestler_id']==w.id)
     session=begin_meeting(s,w.id,'booking',concern['id'])
     answer_meeting(s,session['id'],'promise')
+    answer_meeting(s,session['id'],'listen')
     result=answer_meeting(s,session['id'],'support')
     assert result['status']=='complete'
     assert concern['status']=='resolved'

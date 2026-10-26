@@ -72,6 +72,14 @@ def book_show(state: GameState, name: str, segments: list[Segment], duration: in
         if segment.role_turn_wrestler_id and state.wrestlers[segment.role_turn_wrestler_id].role == segment.role_turn_to:
             raise ValueError('The wrestler is already in that role')
         if segment.storyline_id:
+            # Audit explicit deviations from the locked creative room strategy.
+            scene=state.scenes.get(f'scene-{state.year}-{state.week}-{segment.storyline_id}')
+            if scene and scene.get('status')=='complete' and scene.get('choices'):
+                locked={'mind_games':'slow_burn','challenge':'escalate','shock':'swerve'}.get(scene['choices'][0])
+                if locked and segment.creative_direction!=locked:
+                    state.activity_log.append({'type':'creative_override','year':state.year,'week':state.week,
+                        'storyline_id':segment.storyline_id,'locked':locked,
+                        'booked':segment.creative_direction,'segment':segment.title})
             storyline_slots[segment.storyline_id] = storyline_slots.get(segment.storyline_id, 0) + 1
             if storyline_slots[segment.storyline_id] > 2:
                 raise ValueError("An active storyline may occupy at most two card slots")
@@ -438,6 +446,14 @@ def advance_week(state: GameState) -> dict:
     state.financial_history.append({"year": state.year, "week": state.week,
                                     "reason": "weekly_upkeep", "salaries": salaries,
                                     "fixed_costs": fixed_cost, "net": -salaries - fixed_cost})
+    # Rolling four-week cash-flow signal for sustained, unsustainable spending.
+    recent=state.financial_history[-4:]
+    cash_flows=[item.get('net',0) for item in recent if isinstance(item.get('net'),(int,float))]
+    if len(cash_flows)>=3:
+        avg=sum(cash_flows)/len(cash_flows)
+        if avg<0 and state.player_company.money < max(1,-avg)*8:
+            state.player_company.sponsor_interest=clamp(state.player_company.sponsor_interest-.3)
+            state.news.append('Financial warning: projected cash reserves are under eight weeks at recent net spending.')
     messages = progress_week(state, rng)
     from .injuries import advance_recovery
     messages.extend(advance_recovery(state))
@@ -458,6 +474,22 @@ def advance_week(state: GameState) -> dict:
             arrangement['status']='completed'
             messages.append(f"Mentorship concluded for {student.name if student else 'a wrestler'}.")
 
+    # Multi-week consequences for resolved incidents, keyed to the actual week.
+    for incident in state.incidents:
+        follow=incident.get('follow_up')
+        if not follow or follow.get('remaining_weeks',0)<=0:continue
+        current=(state.year,state.week)
+        if follow.get('last_processed')==list(current):continue
+        follow['last_processed']=list(current)
+        direction=1 if follow.get('positive') else -1
+        for wid in follow.get('wrestler_ids',[]):
+            worker=state.wrestlers.get(wid)
+            if worker and worker.company_id==state.player_company_id:
+                worker.owner_relationship=clamp(worker.owner_relationship+direction*.12,0,25)
+                worker.morale=clamp(worker.morale+direction*.10,0,25)
+        follow['remaining_weeks']-=1
+        if follow['remaining_weeks']==0:
+            messages.append('Backstage follow-up concluded: '+incident['title'])
     messages.extend(simulate_competitors(state))
     from .industry import weekly_morale, update_promises, process_precontracts, update_prestige_history
     from .transfer_market import competitor_offers

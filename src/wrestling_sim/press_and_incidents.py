@@ -227,6 +227,12 @@ def answer_incident(state,incident_id,choice):
         primary.morale=clamp(primary.morale-.4*magnitude,0,25)
     if category in ('equipment','scheduling') and success and choice in ('repair','reschedule','adapt'):
         state.player_company.fan_trust=clamp(state.player_company.fan_trust+.2*magnitude)
+    # Persistent multi-week aftermath: ordinary resolutions fade, serious friction
+    # takes longer, and cooperative outcomes can slowly build trust.
+    event['follow_up']={'remaining_weeks':3 if event['severity'] in ('major','critical') else 2,
+                        'wrestler_ids':list(event['wrestler_ids']),
+                        'positive':bool(success), 'last_processed':None,
+                        'severity':event['severity']}
     event['status']='resolved';event['choice']=choice;event['successful']=success
     decision=next(o['label'] for o in options if o['id']==choice)
     event['resolution']={'decision':decision,'success':success,'relationship_delta':round(direction*magnitude*.65,2),
