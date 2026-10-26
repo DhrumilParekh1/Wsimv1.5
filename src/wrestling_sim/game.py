@@ -458,6 +458,22 @@ def advance_week(state: GameState) -> dict:
             arrangement['status']='completed'
             messages.append(f"Mentorship concluded for {student.name if student else 'a wrestler'}.")
 
+    # Multi-week consequences for resolved incidents, keyed to the actual week.
+    for incident in state.incidents:
+        follow=incident.get('follow_up')
+        if not follow or follow.get('remaining_weeks',0)<=0:continue
+        current=(state.year,state.week)
+        if follow.get('last_processed')==list(current):continue
+        follow['last_processed']=list(current)
+        direction=1 if follow.get('positive') else -1
+        for wid in follow.get('wrestler_ids',[]):
+            worker=state.wrestlers.get(wid)
+            if worker and worker.company_id==state.player_company_id:
+                worker.owner_relationship=clamp(worker.owner_relationship+direction*.12,0,25)
+                worker.morale=clamp(worker.morale+direction*.10,0,25)
+        follow['remaining_weeks']-=1
+        if follow['remaining_weeks']==0:
+            messages.append('Backstage follow-up concluded: '+incident['title'])
     messages.extend(simulate_competitors(state))
     from .industry import weekly_morale, update_promises, process_precontracts, update_prestige_history
     from .transfer_market import competitor_offers
