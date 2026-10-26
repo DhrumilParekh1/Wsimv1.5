@@ -1,0 +1,32 @@
+{
+  "name": "Aurora: First Light",
+  "duration": 120,
+  "segments": [
+    {
+      "kind": "promo",
+      "title": "The Veteran Has a Warning",
+      "wrestler_ids": ["steel", "phoenix"],
+      "storyline_id": "steel-phoenix",
+      "duration": 7,
+      "booking_quality": 20,
+      "creative_direction": "slow_burn"
+    },
+    {
+      "kind": "match",
+      "title": "Nova Cruz vs Orion Knox",
+      "wrestler_ids": ["cruz", "knox"],
+      "duration": 15,
+      "booking_quality": 18,
+      "planned_winner_id": "cruz"
+    },
+    {
+      "kind": "confrontation",
+      "title": "The Final Staredown",
+      "wrestler_ids": ["steel", "phoenix"],
+      "storyline_id": "steel-phoenix",
+      "duration": 8,
+      "booking_quality": 21,
+      "creative_direction": "escalate"
+    }
+  ]
+}

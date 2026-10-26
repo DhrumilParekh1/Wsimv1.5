@@ -1,0 +1,647 @@
+{
+  "show_id": "show-1",
+  "name": "Aurora: V0.7 Demonstration",
+  "year": 2026,
+  "week": 1,
+  "quality": 64.24,
+  "crowd": 63.97,
+  "segments": [
+    {
+      "title": "The Veteran Issues a Challenge",
+      "kind": "promo",
+      "duration": 10,
+      "participants": [
+        "steel",
+        "phoenix"
+      ],
+      "winner": null,
+      "quality": 76.35,
+      "crowd": 71.13,
+      "hype_delta": 5.33,
+      "fan_trust_delta": 0.67,
+      "rng_adjustment": 2.19,
+      "factors": {
+        "performers": 79.4,
+        "story": 67.2,
+        "chemistry": 64.48,
+        "booking": 68,
+        "pacing": 83.0
+      },
+      "match_details": null,
+      "match_engine": null,
+      "highlights": [
+        {
+          "minute": 1,
+          "performer_id": "steel",
+          "move": null,
+          "text": "Marcus Steel addresses the crowd and sets out their argument."
+        },
+        {
+          "minute": 4,
+          "performer_id": "phoenix",
+          "move": null,
+          "text": "Alex Phoenix emphasizes the stakes with a sharp closing line."
+        },
+        {
+          "minute": 6,
+          "performer_id": "steel",
+          "move": null,
+          "text": "Marcus Steel emphasizes the stakes with a sharp closing line."
+        },
+        {
+          "minute": 9,
+          "performer_id": "phoenix",
+          "move": null,
+          "text": "Alex Phoenix emphasizes the stakes with a sharp closing line."
+        }
+      ],
+      "injuries": [],
+      "planned_beat_delivered": false,
+      "narrative": "Marcus Steel, Alex Phoenix addressed the audience. The crowd was engaged."
+    },
+    {
+      "title": "Steel vs Phoenix",
+      "kind": "match",
+      "duration": 32,
+      "participants": [
+        "steel",
+        "phoenix"
+      ],
+      "winner": "phoenix",
+      "quality": 64.98,
+      "crowd": 67.96,
+      "hype_delta": 3.39,
+      "fan_trust_delta": 0.25,
+      "rng_adjustment": 2.63,
+      "factors": {
+        "performers": 68.29,
+        "story": 68.49,
+        "chemistry": 64.54,
+        "booking": 68,
+        "pacing": 52.7
+      },
+      "match_details": {
+        "ring_execution": 69.08,
+        "stamina_readiness": 62.66,
+        "finish_credibility": 82.01,
+        "execution_modifier": -3.61
+      },
+      "match_engine": {
+        "style": "balanced",
+        "styles": [
+          "technical",
+          "storytelling"
+        ],
+        "style_weights": {
+          "stamina": 0.052,
+          "sequences": 0.216,
+          "workrate": 0.195,
+          "technique": 0.202,
+          "selling": 0.192,
+          "experience": 0.059,
+          "character_work": 0.084
+        },
+        "stipulation": "standard",
+        "finish": "clean",
+        "intensity": "high",
+        "style_fit": 69.08,
+        "psychology": 68.84,
+        "stamina_readiness": 62.66,
+        "stipulation_fit": 76.0,
+        "finish_credibility": 82.01,
+        "execution_modifier": -3.61,
+        "crowd_modifier": 1.1,
+        "hype_modifier": 0.2,
+        "trust_modifier": 0.25,
+        "coherence_modifier": 0.7,
+        "beats": [
+          "The match blends technical, storytelling. The match begins with careful holds and technical counters.",
+          "The high tempo pushes the performers to sustain the audience energy.",
+          "Alex Phoenix wins decisively after the final exchange."
+        ],
+        "highlights": [
+          {
+            "minute": 3,
+            "text": "Marcus Steel lands small package; Alex Phoenix regroups and responds.",
+            "performer_id": "steel",
+            "move": "small package",
+            "successful": true
+          },
+          {
+            "minute": 6,
+            "text": "Alex Phoenix attempts arm drag, but Marcus Steel counters.",
+            "performer_id": "phoenix",
+            "move": "arm drag",
+            "successful": false
+          },
+          {
+            "minute": 10,
+            "text": "Marcus Steel lands signature counter; Alex Phoenix regroups and responds.",
+            "performer_id": "steel",
+            "move": "signature counter",
+            "successful": true
+          },
+          {
+            "minute": 13,
+            "text": "Alex Phoenix lands arm drag; Marcus Steel regroups and responds.",
+            "performer_id": "phoenix",
+            "move": "arm drag",
+            "successful": true
+          },
+          {
+            "minute": 16,
+            "text": "Marcus Steel lands small package; Alex Phoenix regroups and responds.",
+            "performer_id": "steel",
+            "move": "small package",
+            "successful": true
+          },
+          {
+            "minute": 19,
+            "text": "Alex Phoenix lands arm drag; Marcus Steel regroups and responds.",
+            "performer_id": "phoenix",
+            "move": "arm drag",
+            "successful": true
+          },
+          {
+            "minute": 22,
+            "text": "Marcus Steel attempts small package, but Alex Phoenix counters.",
+            "performer_id": "steel",
+            "move": "small package",
+            "successful": false
+          },
+          {
+            "minute": 26,
+            "text": "Alex Phoenix lands suplex; Marcus Steel regroups and responds.",
+            "performer_id": "phoenix",
+            "move": "suplex",
+            "successful": true
+          },
+          {
+            "minute": 29,
+            "text": "Marcus Steel lands headlock reversal; Alex Phoenix regroups and responds.",
+            "performer_id": "steel",
+            "move": "headlock reversal",
+            "successful": true
+          },
+          {
+            "minute": 32,
+            "text": "Alex Phoenix finishes with submission hold and scores the booked victory.",
+            "performer_id": "phoenix",
+            "move": "submission hold",
+            "is_finish": true
+          }
+        ]
+      },
+      "highlights": [
+        {
+          "minute": 3,
+          "text": "Marcus Steel lands small package; Alex Phoenix regroups and responds.",
+          "performer_id": "steel",
+          "move": "small package",
+          "successful": true
+        },
+        {
+          "minute": 6,
+          "text": "Alex Phoenix attempts arm drag, but Marcus Steel counters.",
+          "performer_id": "phoenix",
+          "move": "arm drag",
+          "successful": false
+        },
+        {
+          "minute": 10,
+          "text": "Marcus Steel lands signature counter; Alex Phoenix regroups and responds.",
+          "performer_id": "steel",
+          "move": "signature counter",
+          "successful": true
+        },
+        {
+          "minute": 13,
+          "text": "Alex Phoenix lands arm drag; Marcus Steel regroups and responds.",
+          "performer_id": "phoenix",
+          "move": "arm drag",
+          "successful": true
+        },
+        {
+          "minute": 16,
+          "text": "Marcus Steel lands small package; Alex Phoenix regroups and responds.",
+          "performer_id": "steel",
+          "move": "small package",
+          "successful": true
+        },
+        {
+          "minute": 19,
+          "text": "Alex Phoenix lands arm drag; Marcus Steel regroups and responds.",
+          "performer_id": "phoenix",
+          "move": "arm drag",
+          "successful": true
+        },
+        {
+          "minute": 22,
+          "text": "Marcus Steel attempts small package, but Alex Phoenix counters.",
+          "performer_id": "steel",
+          "move": "small package",
+          "successful": false
+        },
+        {
+          "minute": 26,
+          "text": "Alex Phoenix lands suplex; Marcus Steel regroups and responds.",
+          "performer_id": "phoenix",
+          "move": "suplex",
+          "successful": true
+        },
+        {
+          "minute": 29,
+          "text": "Marcus Steel lands headlock reversal; Alex Phoenix regroups and responds.",
+          "performer_id": "steel",
+          "move": "headlock reversal",
+          "successful": true
+        },
+        {
+          "minute": 32,
+          "text": "Alex Phoenix finishes with submission hold and scores the booked victory.",
+          "performer_id": "phoenix",
+          "move": "submission hold",
+          "is_finish": true
+        }
+      ],
+      "injuries": [],
+      "planned_beat_delivered": false,
+      "narrative": "The match blends technical, storytelling. The match begins with careful holds and technical counters. The high tempo pushes the performers to sustain the audience energy. Alex Phoenix wins decisively after the final exchange. The crowd was engaged."
+    },
+    {
+      "title": "A Private Warning",
+      "kind": "backstage",
+      "duration": 8,
+      "participants": [
+        "vale",
+        "collins"
+      ],
+      "winner": null,
+      "quality": 69.46,
+      "crowd": 68.91,
+      "hype_delta": 3.38,
+      "fan_trust_delta": 0.26,
+      "rng_adjustment": 0.07,
+      "factors": {
+        "performers": 73.79,
+        "story": 65.2,
+        "chemistry": 60.0,
+        "booking": 68,
+        "pacing": 81.74
+      },
+      "match_details": null,
+      "match_engine": null,
+      "highlights": [
+        {
+          "minute": 1,
+          "performer_id": "vale",
+          "move": null,
+          "text": "Ember Vale speaks privately about the current tension."
+        },
+        {
+          "minute": 4,
+          "performer_id": "collins",
+          "move": null,
+          "text": "Vega Collins offers a guarded response to the challenge."
+        },
+        {
+          "minute": 7,
+          "performer_id": "vale",
+          "move": null,
+          "text": "Ember Vale offers a guarded response to the challenge."
+        }
+      ],
+      "injuries": [],
+      "planned_beat_delivered": false,
+      "narrative": "A backstage scene featured Ember Vale, Vega Collins. The crowd was engaged."
+    },
+    {
+      "title": "Ember Vale vs Vega Collins",
+      "kind": "match",
+      "duration": 30,
+      "participants": [
+        "vale",
+        "collins"
+      ],
+      "winner": "collins",
+      "quality": 65.98,
+      "crowd": 67.49,
+      "hype_delta": 3.3,
+      "fan_trust_delta": 0.31,
+      "rng_adjustment": 1.43,
+      "factors": {
+        "performers": 66.11,
+        "story": 66.0,
+        "chemistry": 59.95,
+        "booking": 68,
+        "pacing": 62.5
+      },
+      "match_details": {
+        "ring_execution": 65.35,
+        "stamina_readiness": 77.08,
+        "finish_credibility": 82.6,
+        "execution_modifier": -0.62
+      },
+      "match_engine": {
+        "style": "balanced",
+        "styles": [
+          "technical",
+          "high_flying"
+        ],
+        "style_weights": {
+          "stamina": 0.07,
+          "sequences": 0.202,
+          "moves": 0.081,
+          "workrate": 0.15,
+          "technique": 0.202,
+          "selling": 0.098,
+          "athleticism": 0.091,
+          "agility": 0.108
+        },
+        "stipulation": "standard",
+        "finish": "clean",
+        "intensity": "standard",
+        "style_fit": 65.35,
+        "psychology": 70.92,
+        "stamina_readiness": 77.08,
+        "stipulation_fit": 76.0,
+        "finish_credibility": 82.6,
+        "execution_modifier": -0.62,
+        "crowd_modifier": 1.1,
+        "hype_modifier": 0.2,
+        "trust_modifier": 0.25,
+        "coherence_modifier": 0.7,
+        "beats": [
+          "The match blends technical, high flying. The match begins with careful holds and technical counters.",
+          "The middle portion builds to a series of well-timed reversals.",
+          "Vega Collins wins decisively after the final exchange."
+        ],
+        "highlights": [
+          {
+            "minute": 3,
+            "text": "Ember Vale lands headlock reversal; Vega Collins regroups and responds.",
+            "performer_id": "vale",
+            "move": "headlock reversal",
+            "successful": true
+          },
+          {
+            "minute": 6,
+            "text": "Vega Collins lands mat reversal; Ember Vale regroups and responds.",
+            "performer_id": "collins",
+            "move": "mat reversal",
+            "successful": true
+          },
+          {
+            "minute": 9,
+            "text": "Ember Vale attempts comeback clothesline, but Vega Collins counters.",
+            "performer_id": "vale",
+            "move": "comeback clothesline",
+            "successful": false
+          },
+          {
+            "minute": 12,
+            "text": "Vega Collins lands wristlock counter; Ember Vale regroups and responds.",
+            "performer_id": "collins",
+            "move": "wristlock counter",
+            "successful": true
+          },
+          {
+            "minute": 15,
+            "text": "Ember Vale lands corner exchange; Vega Collins regroups and responds.",
+            "performer_id": "vale",
+            "move": "corner exchange",
+            "successful": true
+          },
+          {
+            "minute": 18,
+            "text": "Vega Collins lands submission hold; Ember Vale regroups and responds.",
+            "performer_id": "collins",
+            "move": "submission hold",
+            "successful": true
+          },
+          {
+            "minute": 21,
+            "text": "Ember Vale lands swinging neckbreaker; Vega Collins regroups and responds.",
+            "performer_id": "vale",
+            "move": "swinging neckbreaker",
+            "successful": true
+          },
+          {
+            "minute": 24,
+            "text": "Vega Collins lands suplex; Ember Vale regroups and responds.",
+            "performer_id": "collins",
+            "move": "suplex",
+            "successful": true
+          },
+          {
+            "minute": 27,
+            "text": "Ember Vale lands clothesline; Vega Collins regroups and responds.",
+            "performer_id": "vale",
+            "move": "clothesline",
+            "successful": true
+          },
+          {
+            "minute": 30,
+            "text": "Vega Collins finishes with comeback clothesline and scores the booked victory.",
+            "performer_id": "collins",
+            "move": "comeback clothesline",
+            "is_finish": true
+          }
+        ]
+      },
+      "highlights": [
+        {
+          "minute": 3,
+          "text": "Ember Vale lands headlock reversal; Vega Collins regroups and responds.",
+          "performer_id": "vale",
+          "move": "headlock reversal",
+          "successful": true
+        },
+        {
+          "minute": 6,
+          "text": "Vega Collins lands mat reversal; Ember Vale regroups and responds.",
+          "performer_id": "collins",
+          "move": "mat reversal",
+          "successful": true
+        },
+        {
+          "minute": 9,
+          "text": "Ember Vale attempts comeback clothesline, but Vega Collins counters.",
+          "performer_id": "vale",
+          "move": "comeback clothesline",
+          "successful": false
+        },
+        {
+          "minute": 12,
+          "text": "Vega Collins lands wristlock counter; Ember Vale regroups and responds.",
+          "performer_id": "collins",
+          "move": "wristlock counter",
+          "successful": true
+        },
+        {
+          "minute": 15,
+          "text": "Ember Vale lands corner exchange; Vega Collins regroups and responds.",
+          "performer_id": "vale",
+          "move": "corner exchange",
+          "successful": true
+        },
+        {
+          "minute": 18,
+          "text": "Vega Collins lands submission hold; Ember Vale regroups and responds.",
+          "performer_id": "collins",
+          "move": "submission hold",
+          "successful": true
+        },
+        {
+          "minute": 21,
+          "text": "Ember Vale lands swinging neckbreaker; Vega Collins regroups and responds.",
+          "performer_id": "vale",
+          "move": "swinging neckbreaker",
+          "successful": true
+        },
+        {
+          "minute": 24,
+          "text": "Vega Collins lands suplex; Ember Vale regroups and responds.",
+          "performer_id": "collins",
+          "move": "suplex",
+          "successful": true
+        },
+        {
+          "minute": 27,
+          "text": "Ember Vale lands clothesline; Vega Collins regroups and responds.",
+          "performer_id": "vale",
+          "move": "clothesline",
+          "successful": true
+        },
+        {
+          "minute": 30,
+          "text": "Vega Collins finishes with comeback clothesline and scores the booked victory.",
+          "performer_id": "collins",
+          "move": "comeback clothesline",
+          "is_finish": true
+        }
+      ],
+      "injuries": [],
+      "planned_beat_delivered": false,
+      "narrative": "The match blends technical, high flying. The match begins with careful holds and technical counters. The middle portion builds to a series of well-timed reversals. Vega Collins wins decisively after the final exchange. The crowd was engaged."
+    },
+    {
+      "title": "Nova Cruz Speaks",
+      "kind": "interview",
+      "duration": 10,
+      "participants": [
+        "cruz"
+      ],
+      "winner": null,
+      "quality": 57.22,
+      "crowd": 51.27,
+      "hype_delta": -0.15,
+      "fan_trust_delta": -0.46,
+      "rng_adjustment": -2.3,
+      "factors": {
+        "performers": 60.6,
+        "story": 45.0,
+        "chemistry": 65.0,
+        "booking": 68,
+        "pacing": 66.6
+      },
+      "match_details": null,
+      "match_engine": null,
+      "highlights": [
+        {
+          "minute": 1,
+          "performer_id": "cruz",
+          "move": null,
+          "text": "Nova Cruz answers a pointed question about the rivalry."
+        },
+        {
+          "minute": 4,
+          "performer_id": "cruz",
+          "move": null,
+          "text": "Nova Cruz avoids a direct promise and keeps the audience guessing."
+        },
+        {
+          "minute": 6,
+          "performer_id": "cruz",
+          "move": null,
+          "text": "Nova Cruz avoids a direct promise and keeps the audience guessing."
+        },
+        {
+          "minute": 9,
+          "performer_id": "cruz",
+          "move": null,
+          "text": "Nova Cruz avoids a direct promise and keeps the audience guessing."
+        }
+      ],
+      "injuries": [],
+      "planned_beat_delivered": false,
+      "narrative": "Nova Cruz took part in an interview. The reaction was mixed."
+    },
+    {
+      "title": "The Orion Manifesto",
+      "kind": "promo",
+      "duration": 20,
+      "participants": [
+        "knox"
+      ],
+      "winner": null,
+      "quality": 55.82,
+      "crowd": 53.12,
+      "hype_delta": 0.22,
+      "fan_trust_delta": -0.54,
+      "rng_adjustment": -4.65,
+      "factors": {
+        "performers": 68.64,
+        "story": 45.0,
+        "chemistry": 65.0,
+        "booking": 68,
+        "pacing": 31.3
+      },
+      "match_details": null,
+      "match_engine": null,
+      "highlights": [
+        {
+          "minute": 2,
+          "performer_id": "knox",
+          "move": null,
+          "text": "Orion Knox addresses the crowd and sets out their argument."
+        },
+        {
+          "minute": 8,
+          "performer_id": "knox",
+          "move": null,
+          "text": "Orion Knox emphasizes the stakes with a sharp closing line."
+        },
+        {
+          "minute": 12,
+          "performer_id": "knox",
+          "move": null,
+          "text": "Orion Knox emphasizes the stakes with a sharp closing line."
+        },
+        {
+          "minute": 18,
+          "performer_id": "knox",
+          "move": null,
+          "text": "Orion Knox emphasizes the stakes with a sharp closing line."
+        }
+      ],
+      "injuries": [],
+      "planned_beat_delivered": false,
+      "narrative": "Orion Knox addressed the audience. The reaction was mixed."
+    }
+  ],
+  "finances": {
+    "attendance": 616,
+    "tickets": 21560,
+    "streaming": 7368,
+    "sponsors": 3879,
+    "merchandise": 2858,
+    "production": 11100,
+    "event_net": 24565,
+    "contract_sponsors": 0
+  },
+  "company_fan_trust": 58.08,
+  "company_popularity": 36.22,
+  "company_sponsor_interest": 41.97,
+  "event_type": "Weekly"
+}

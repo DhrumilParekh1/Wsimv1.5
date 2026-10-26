@@ -1,0 +1,20 @@
+{
+  "name": "Aurora: Promise Kept",
+  "duration": 120,
+  "segments": [
+    {
+      "kind": "match",
+      "title": "The Veteran vs The Prodigy",
+      "wrestler_ids": ["steel", "phoenix"],
+      "duration": 20,
+      "storyline_id": "steel-phoenix",
+      "booking_quality": 19,
+      "planned_winner_id": "phoenix",
+      "creative_direction": "advance",
+      "match_style": "storytelling",
+      "finish_type": "clean",
+      "stipulation": "standard",
+      "intensity": "high"
+    }
+  ]
+}

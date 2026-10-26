@@ -1,0 +1,114 @@
+{
+  "show_id": "show-1",
+  "name": "Aurora: First Light",
+  "year": 2026,
+  "week": 1,
+  "quality": 72.58,
+  "crowd": 66.02,
+  "segments": [
+    {
+      "title": "The Veteran Has a Warning",
+      "kind": "promo",
+      "duration": 7,
+      "participants": [
+        "steel",
+        "phoenix"
+      ],
+      "winner": null,
+      "quality": 78.43,
+      "crowd": 72.36,
+      "hype_delta": 4.62,
+      "fan_trust_delta": 0.79,
+      "rng_adjustment": 2.19,
+      "factors": {
+        "performers": 79.4,
+        "story": 67.2,
+        "chemistry": 64.48,
+        "booking": 80,
+        "pacing": 88.0
+      },
+      "narrative": "Marcus Steel, Alex Phoenix addressed the audience. The crowd was engaged."
+    },
+    {
+      "title": "Nova Cruz vs Orion Knox",
+      "kind": "match",
+      "duration": 15,
+      "participants": [
+        "cruz",
+        "knox"
+      ],
+      "winner": "cruz",
+      "quality": 72.39,
+      "crowd": 62.23,
+      "hype_delta": 2.23,
+      "fan_trust_delta": 0.43,
+      "rng_adjustment": 2.88,
+      "factors": {
+        "performers": 73.14,
+        "story": 45.0,
+        "chemistry": 60.0,
+        "booking": 72,
+        "pacing": 87.79
+      },
+      "narrative": "Nova Cruz and Orion Knox wrestled a 15-minute match. Booked winner: Nova Cruz. The crowd was engaged."
+    },
+    {
+      "title": "A Hallway Confrontation",
+      "kind": "backstage",
+      "duration": 5,
+      "participants": [
+        "vale",
+        "collins"
+      ],
+      "winner": null,
+      "quality": 60.96,
+      "crowd": 59.7,
+      "hype_delta": 1.54,
+      "fan_trust_delta": -0.24,
+      "rng_adjustment": -2.81,
+      "factors": {
+        "performers": 73.79,
+        "story": 45.0,
+        "chemistry": 60.0,
+        "booking": 68,
+        "pacing": 87.34
+      },
+      "narrative": "A backstage scene featured Ember Vale, Vega Collins. The reaction was mixed."
+    },
+    {
+      "title": "The Final Staredown",
+      "kind": "confrontation",
+      "duration": 8,
+      "participants": [
+        "steel",
+        "phoenix"
+      ],
+      "winner": null,
+      "quality": 75.1,
+      "crowd": 71.51,
+      "hype_delta": 6.13,
+      "fan_trust_delta": 0.59,
+      "rng_adjustment": -0.96,
+      "factors": {
+        "performers": 79.22,
+        "story": 68.4,
+        "chemistry": 64.48,
+        "booking": 84,
+        "pacing": 88.0
+      },
+      "narrative": "Tensions escalated between Marcus Steel, Alex Phoenix. The crowd was engaged."
+    }
+  ],
+  "finances": {
+    "attendance": 627,
+    "tickets": 21945,
+    "streaming": 7660,
+    "sponsors": 3930,
+    "merchandise": 2909,
+    "production": 11100,
+    "event_net": 25344
+  },
+  "company_fan_trust": 58.39,
+  "company_popularity": 36.33,
+  "company_sponsor_interest": 42.34
+}
