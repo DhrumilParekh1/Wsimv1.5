@@ -214,6 +214,11 @@ function addSegmentObject(seg){
  if(seg.storyline_id){const story=model.data.storylines.find(s=>s.id===seg.storyline_id);
   if(!story||!ids.every(id=>story.wrestler_ids.includes(id)))throw Error('All story participants must belong to the attached storyline.');
   if(model.draft.filter(x=>x.storyline_id===seg.storyline_id).length>=2)throw Error('Maximum two slots for each storyline.');}
+ if(seg.storyline_id){
+  const scene=(model.data.scenes||[]).find(x=>x.storyline_id===seg.storyline_id&&x.status==='complete'&&Array.isArray(x.choices)&&x.choices.length);
+  const direction=scene&&({mind_games:'slow_burn',challenge:'escalate',shock:'swerve'})[scene.choices[0]];
+  if(direction&&seg.creative_direction!==direction&&!window.confirm('This booking direction differs from your locked Creative Room strategy ('+direction.replaceAll('_',' ')+'). Override the direction?'))return;
+ }
  model.draft.push(seg);model.prefill=null;model.view='booker';render();notify('Segment added to the card.');
 }
 function addSegment(form){
@@ -230,7 +235,9 @@ function addSegment(form){
 }
 function addCreativeTask(id){
  const t=model.data.creative_tasks.find(t=>t.id===id);if(!t)throw Error('Creative task no longer active.');
- model.prefill={...t};model.view='booker';model.modal=null;render();notify('Creative commitment loaded. Review the segment and click Add segment.');
+ const scene=(model.data.scenes||[]).find(x=>x.storyline_id===t.storyline_id&&x.status==='complete');
+ const direction=scene&&({mind_games:'slow_burn',challenge:'escalate',shock:'swerve'})[scene.choices?.[0]];
+ model.prefill={...t,creative_direction:direction||'advance'};model.view='booker';model.modal=null;render();notify('Creative commitment loaded. Review the segment and click Add segment.');
 }
 function liveModal(){
  const s=model.data.shows.find(s=>s.id===model.modal?.id);
