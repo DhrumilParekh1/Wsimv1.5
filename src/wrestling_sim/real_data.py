@@ -264,6 +264,7 @@ def main():
         sp.add_argument("--db",default=str(DEFAULT_DB))
         sp.add_argument("--limit",type=int,default=100 if cmd!="list" else 20)
         if cmd=="sync":sp.add_argument("--offset",type=int,default=0)
+        if cmd=="photos":sp.add_argument("--resolve-roster",action="store_true",help="Resolve official roster identities before importing Commons photos")
         if cmd in ("seed","seed-universe"):
             sp.add_argument("--save",default="saves/real_universe.db" if cmd=="seed-universe" else "saves/real_pilot.db")
     args=parser.parse_args()
@@ -275,8 +276,10 @@ def main():
         elif args.command=="seed":
             result=seed_game(args.db,args.save,args.limit)
         elif args.command=="photos":
-            from .real_photos import sync_photos
+            from .real_photos import sync_photos, resolve_roster_identities
+            resolved=resolve_roster_identities(args.db,min(args.limit,80)) if args.resolve_roster else None
             result=sync_photos(args.db,args.limit)
+            if resolved:result["roster_identity_resolution"]=resolved
         else:
             from .real_universe import seed_universe
             result=seed_universe(args.db,args.save)
