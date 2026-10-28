@@ -86,7 +86,7 @@ function booking(){
  `<form id="segment-form" class="form-grid"><div class="field full"><label>Match / promo / segment name (required)</label><input class="input" name="title" placeholder="e.g. Phoenix Challenges Steel" value="${safe(p.title||'')}" required></div>
  <div class="field"><label>Segment category</label><select class="select" name="kind" id="segment-kind"><optgroup label="MATCH">${kinds.slice(0,1).map(k=>`<option value="${k[0]}" ${selectedKind===k[0]?'selected':''}>${k[1]}</option>`).join('')}</optgroup><optgroup label="PROMOS & BACKSTAGE">${kinds.slice(1,6).map(k=>`<option value="${k[0]}" ${selectedKind===k[0]?'selected':''}>${k[1]}</option>`).join('')}</optgroup><optgroup label="OTHER ANGLES">${kinds.slice(6).map(k=>`<option value="${k[0]}" ${selectedKind===k[0]?'selected':''}>${k[1]}</option>`).join('')}</optgroup></select></div>
  <div class="field"><label>Duration (minutes)</label><input class="input" name="duration" type="number" min="1" max="60" value="${p.duration||12}" required></div>
- <div class="field"><label>Performer 1</label><select class="select" name="first" required>${optionList(r,p.wrestler_ids?.[0]||'')}</select></div><div class="field"><label>Performer 2</label><select class="select" name="second">${optionList(r.filter(w=>!p.wrestler_ids?.[0]||w.division===who(p.wrestler_ids[0])?.division),p.wrestler_ids?.[1]||'')}</select></div>
+ <div class="field"><label>Performer 1</label><select class="select" name="first" required>${optionList(r,p.wrestler_ids?.[0]||'')}</select></div><div class="field"><label id="second-performer-label">Performer 2 (required for matches)</label><select class="select" name="second">${optionList(r.filter(w=>!p.wrestler_ids?.[0]||w.division===who(p.wrestler_ids[0])?.division),p.wrestler_ids?.[1]||'')}</select></div>
  <div class="field"><label>Active storyline</label><select class="select" name="storyline_id" id="segment-storyline">${selectStory().replace(`value="${safe(p.storyline_id||'')}"`,`value="${safe(p.storyline_id||'')}" selected`)}</select></div><div class="field"><label>Creative direction</label><select name="creative_direction" class="select">${[["advance","Advance"],["slow_burn","Slow burn"],["escalate","Escalate"],["swerve","Twist"],["resolve","Resolve"]].map(([v,l])=>`<option value="${v}" ${p.creative_direction===v?"selected":""}>${l}</option>`).join("")}</select><small>Direction affects hype, story coherence, fan trust and the expectations of the audience. Repeated escalation and premature resolution can backfire.</small></div>
  <div class="field match-config ${selectedKind!=='match'?'hidden':''}"><label>Primary style (65% with two / 55% with three)</label><select name="match_style" class="select">${['balanced','technical','high_flying','power','brawl','storytelling'].map(k=>`<option value="${k}">${safe(k.replaceAll('_',' '))}</option>`).join('')}</select></div>
  <div class="field match-config ${selectedKind!=='match'?'hidden':''}"><label>Secondary style (35% with two / 30% with three)</label><select name="match_style_secondary" class="select">${['storytelling','technical','high_flying','power','brawl','balanced'].map(k=>`<option value="${k}">${safe(k.replaceAll('_',' '))}</option>`).join('')}</select></div>
@@ -95,7 +95,7 @@ function booking(){
  <div class="field match-config ${selectedKind!=='match'?'hidden':''}"><label>Finish</label><select name="finish_type" class="select">${['clean','flash_pin','interference','disqualification'].map(k=>`<option value="${k}">${safe(k.replaceAll('_',' '))}</option>`).join('')}</select></div>
  <div class="field match-config ${selectedKind!=='match'?'hidden':''}"><label>Intensity</label><select name="intensity" class="select"><option value="measured">Measured</option><option selected value="standard">Standard</option><option value="high">High</option></select></div>
  <div class="field match-config ${selectedKind!=='match'?'hidden':''}"><label>Booked winner (required for EVERY match)</label><select name="planned_winner_id" class="select">${optionList((p.wrestler_ids||[]).map(who).filter(Boolean),p.planned_winner_id||'', 'Choose the winner')}</select></div>
- <div class="field match-config ${selectedKind!=='match'?'hidden':''}"><label>Championship at stake</label><select name="championship_id" class="select"><option value="">Non-title match</option>${(model.data.championships||[]).map(b=>`<option value="${safe(b.id)}">${safe(b.name)}</option>`).join('')}</select></div>
+ <div class="field match-config ${selectedKind!=='match'?'hidden':''}"><label>Championship at stake</label><select name="championship_id" class="select"><option value="">Non-title match</option>${(model.data.championships||[]).filter(b=>p.wrestler_ids?.length===2&&p.wrestler_ids.includes(b.holder_id)&&p.wrestler_ids.every(id=>who(id)?.division===b.division)).map(b=>`<option value="${safe(b.id)}">${safe(b.name)}</option>`).join('')}</select></div>
     <div class="field promo-config ${selectedKind==='match'?'hidden':''}"><label>Extra promo direction</label><label class="check"><input type="checkbox" name="promo_brawl" value="1"> Break into a ringside brawl</label></div>
  <div class="field"><label>Optional story-driven role turn</label><select name="role_turn_to" class="select"><option value="">No turn</option><option value="face">Turn face</option><option value="heel">Turn heel</option><option value="tweener">Turn tweener</option></select></div><div class="field"><label>Wrestler making the turn</label><select name="role_turn_wrestler_id" class="select">${optionList((p.wrestler_ids||[]).map(id=>who(id)).filter(Boolean),p.role_turn_wrestler_id||'', 'Choose the wrestler in this segment')}</select></div>
  <div class="field"><label>Advertising budget ($)</label><input type="number" class="input" name="promotion_budget" min="0" step="1000" value="5000"><small>Spend real company funds on reach, with diminishing returns. Cash available: ${fmtMoney(model.data.company.money)}; card budget so far: ${fmtMoney(model.draft.reduce((t,x)=>t+Number(x.promotion_budget||0),0))}.</small></div>
@@ -221,8 +221,30 @@ function addSegmentObject(seg){
  }
  model.draft.push(seg);model.prefill=null;model.view='booker';render();notify('Segment added to the card.');
 }
+function syncBookingEligibility(form){
+ if(!form)return;
+ const kind=form.elements.namedItem('kind')?.value;
+ const first=form.elements.namedItem('first')?.value,second=form.elements.namedItem('second')?.value;
+ const secondInput=form.elements.namedItem('second');
+ const mandatory=['match','confrontation'].includes(kind);
+ if(secondInput)secondInput.required=mandatory;
+ const label=form.querySelector('#second-performer-label');
+ if(label)label.textContent=mandatory?'Performer 2 (required)':'Performer 2 (optional)';
+ const title=form.elements.namedItem('championship_id');
+ if(title){
+  const ids=[first,second].filter(Boolean);
+  const eligible=(model.data.championships||[]).filter(b=>ids.length===2&&ids.includes(b.holder_id)&&ids.every(id=>who(id)?.division===b.division));
+  const selected=title.value;
+  title.innerHTML='<option value="">Non-title match</option>'+eligible.map(b=>`<option value="${safe(b.id)}">${safe(b.name)}</option>`).join('');
+  title.value=eligible.some(b=>b.id===selected)?selected:'';
+ }
+ const brawl=form.elements.namedItem('promo_brawl');
+ if(brawl){brawl.disabled=kind!=='promo'||!second;brawl.checked=brawl.disabled?false:brawl.checked;}
+}
 function addSegment(form){
+ syncBookingEligibility(form);
  const f=new FormData(form),kind=f.get('kind'),first=f.get('first'),second=f.get('second'),ids=[first,second].filter(Boolean);
+ if(['match','confrontation'].includes(kind)&&!second)throw Error('Select two different performers for this segment.');
  addSegmentObject({kind,title:String(f.get('title')).trim(),duration:Number(f.get('duration')),
   wrestler_ids:ids,storyline_id:f.get('storyline_id')||null,promotion_budget:Number(f.get('promotion_budget')||0),
   planned_winner_id:kind==='match'?(f.get('planned_winner_id')||null):null,
@@ -230,7 +252,7 @@ function addSegment(form){
   creative_direction:f.get('creative_direction')||'advance',match_style:f.get('match_style')||'balanced',
   match_styles:kind==='match'?[f.get('match_style'),f.get('match_style_secondary'),f.get('match_style_tertiary')].filter(Boolean):[],
   finish_type:f.get('finish_type')||'clean',stipulation:f.get('stipulation')||'standard',
-  intensity:f.get('intensity')||'standard',promo_brawl:kind!=='match'&&f.get('promo_brawl')==='1',
+  intensity:f.get('intensity')||'standard',promo_brawl:kind==='promo'&&ids.length===2&&f.get('promo_brawl')==='1',
   role_turn_to:f.get('role_turn_to')||null,role_turn_wrestler_id:f.get('role_turn_wrestler_id')||null});
 }
 function addCreativeTask(id){
@@ -244,10 +266,12 @@ function liveModal(){
  if(!s?.result)return '<p>Show is not yet simulated.</p>';
  const seg=s.result.segments[Math.min(model.liveIndex,s.result.segments.length-1)];
  const highlights=seg.highlights||seg.match_engine?.highlights||[{minute:seg.duration,text:seg.narrative}];
- const shown=highlights.slice(0,model.highlightIndex+1);
+ const available=highlights.slice(0,model.highlightIndex+1);
+ const page=Math.max(0,Math.min(model.livePage||0,Math.ceil(available.length/3)-1));
+ const shown=available.slice(page*3,page*3+3);
  const finished=model.highlightIndex>=highlights.length-1;
  const allFinished=finished&&model.liveIndex>=s.result.segments.length-1;
- return `<div class="eyebrow">ON AIR · WEEK ${s.week} · SEGMENT ${model.liveIndex+1}/${s.result.segments.length}</div><h2>${safe(seg.title)}</h2><p class="muted">${safe(seg.kind)} · ${seg.duration} minutes · Rating ${n1(seg.quality)}</p>${model.narrationStatus?.status==='running'||model.narrationStatus?.status==='queued'?`<div class="narration-progress">✦ ${safe(model.narrationStatus.stage)} — highlights are playable while AI narration runs.</div>`:''}<div class="live-feed" id="live-highlight-feed">${shown.map(e=>`<div class="live-event"><strong>${e.minute}'</strong><span>${safe(e.text)}${e.ai_flavour?`<em class="ai-flavour">${safe(e.ai_flavour)}</em>`:''}</span></div>`).join('')}</div><div class="form-actions"><button class="btn btn-outline btn-small" data-live-latest="1">Jump to Latest ↓</button>${finished?`<p class="fan-report"><strong>Fan reaction:</strong> ${safe(seg.fan_report?.source==='ollama'?seg.fan_report.text:seg.fan_reaction||'Reaction pending.')}</p>`:''}${allFinished?`<button class="btn btn-coral btn-wide" data-live-report="${safe(s.id)}">View full show report</button>`:`<button class="btn btn-dark btn-wide" data-live-next="1">${finished?'Next segment':'Next highlight'} ${ico('arrow')}</button>`}</div><p class="helper">All events and move choices come from the simulation. Ollama adds atmosphere without altering the results.</p>`;
+ return `<div class="eyebrow">ON AIR · WEEK ${s.week} · SEGMENT ${model.liveIndex+1}/${s.result.segments.length}</div><h2>${safe(seg.title)}</h2><p class="muted">${safe(seg.kind)} · ${seg.duration} minutes · Rating ${n1(seg.quality)}</p>${model.narrationStatus?.status==='running'||model.narrationStatus?.status==='queued'?`<div class="narration-progress">✦ ${safe(model.narrationStatus.stage)} — highlights are playable while AI narration runs.</div>`:''}<div class="live-feed" id="live-highlight-feed" style="overflow:visible;max-height:none">${shown.map(e=>`<div class="live-event"><strong>${e.minute}'</strong><span>${safe(e.text)}${e.ai_flavour?`<em class="ai-flavour">${safe(e.ai_flavour)}</em>`:''}</span></div>`).join('')}</div><div class="form-actions"><button class="btn btn-outline btn-small" data-live-page="-1" ${page===0?'disabled':''}>← Previous page</button><span>Page ${page+1}/${Math.max(1,Math.ceil(available.length/3))}</span><button class="btn btn-outline btn-small" data-live-page="1" ${(page+1)*3>=available.length?'disabled':''}>Next page →</button>${finished?`<p class="fan-report"><strong>Fan reaction:</strong> ${safe(seg.fan_report?.source==='ollama'?seg.fan_report.text:seg.fan_reaction||'Reaction pending.')}</p>`:''}${allFinished?`<button class="btn btn-coral btn-wide" data-live-report="${safe(s.id)}">View full show report</button>`:`<button class="btn btn-dark btn-wide" data-live-next="1">${finished?'Next segment':'Next highlight'} ${ico('arrow')}</button>`}</div><p class="helper">All events and move choices come from the simulation. Ollama adds atmosphere without altering the results.</p>`;
 }
 // Event delegation keeps bindings live after each full UI refresh.
 app.addEventListener('click',async e=>{const pressNotice=e.target.closest('[data-press-reminder]');if(pressNotice){model.view='press';model.modal=null;render();return;}
@@ -276,8 +300,9 @@ app.addEventListener('click',async e=>{const pressNotice=e.target.closest('[data
  const hire=e.target.closest('[data-hire]');if(hire){if(window.confirm('Sign this head of creative and pay their fee?'))await run(()=>request('/ui/staff/hire','POST',{head_id:hire.dataset.hire}),'Creative head signed.');return;}
  const media=e.target.closest('[data-media]');if(media){model.modal={type:'media'};render();return;}
 
+ const pageButton=e.target.closest('[data-live-page]');if(pageButton){model.livePage=Math.max(0,(model.livePage||0)+Number(pageButton.dataset.livePage));render();return;}
  const jumpLatest=e.target.closest('[data-live-latest]');if(jumpLatest){const feed=document.querySelector('#live-highlight-feed');if(feed)feed.scrollTop=feed.scrollHeight;return;}
- const liveNext=e.target.closest('[data-live-next]');if(liveNext){const seg=model.data.shows.find(x=>x.id===model.modal.id).result.segments[model.liveIndex];const total=(seg.highlights||seg.match_engine?.highlights||[]).length||1;if(model.highlightIndex<total-1)model.highlightIndex++;else{model.liveIndex++;model.highlightIndex=0;}const previous=document.querySelector('.live-feed');const nearBottom=!previous||previous.scrollHeight-previous.clientHeight-previous.scrollTop<72;const previousOffset=previous?.scrollTop||0;render();const feed=document.querySelector('.live-feed');if(feed){feed.scrollTop=nearBottom?feed.scrollHeight:previousOffset;}return;}
+ const liveNext=e.target.closest('[data-live-next]');if(liveNext){const seg=model.data.shows.find(x=>x.id===model.modal.id).result.segments[model.liveIndex];const total=(seg.highlights||seg.match_engine?.highlights||[]).length||1;if(model.highlightIndex<total-1){model.highlightIndex++;model.livePage=Math.floor(model.highlightIndex/3);}else{model.liveIndex++;model.highlightIndex=0;model.livePage=0;}const previous=document.querySelector('.live-feed');const nearBottom=!previous||previous.scrollHeight-previous.clientHeight-previous.scrollTop<72;const previousOffset=previous?.scrollTop||0;render();const feed=document.querySelector('.live-feed');if(feed){feed.scrollTop=nearBottom?feed.scrollHeight:previousOffset;}return;}
  const liveReport=e.target.closest('[data-live-report]');if(liveReport){model.modal={type:'report',id:liveReport.dataset.liveReport};render();return;}
  const remove=e.target.closest('[data-remove]');if(remove){model.draft.splice(Number(remove.dataset.remove),1);render();return;}const choice=e.target.closest('[data-choice]');if(choice){const response=await run(()=>request('/ui/choices','POST',{event_id:choice.dataset.choice,option_id:choice.dataset.option}),'Decision made.');if(response){model.modal={type:'choice',result:response};render();}return;}const start=e.target.closest('[data-scene-start]');if(start){await run(()=>request('/ui/scenes/start','POST',{storyline_id:start.dataset.sceneStart}),'Creative meeting started.');return;}
  const sceneChoice=e.target.closest('[data-scene-choice]');if(sceneChoice){await run(()=>request('/ui/scenes/choose','POST',{scene_id:sceneChoice.dataset.sceneChoice,option_id:sceneChoice.dataset.sceneOption}),'Storyline decision recorded.');return;}
@@ -304,7 +329,7 @@ function syncParticipantChoices(form){
    const previous=select.value;select.innerHTML=optionList(participants,previous,field==='planned_winner_id'?'Choose the winner':'Choose the wrestler in this segment');
  }
 }
-app.addEventListener('change',e=>{if(['first','second'].includes(e.target.name)&&e.target.closest('#segment-form')){syncParticipantChoices(e.target.closest('#segment-form'));}
+app.addEventListener('change',e=>{if(['first','second'].includes(e.target.name)&&e.target.closest('#segment-form')){syncParticipantChoices(e.target.closest('#segment-form'));syncBookingEligibility(e.target.closest('#segment-form'));}
  if(e.target.dataset.cardTier){run(()=>request(`/wrestlers/${encodeURIComponent(e.target.dataset.cardTier)}/tier`,'POST',{tier:e.target.value}),'Roster tier updated.');return;}if(e.target.id==='quick-nav'){changeView(e.target.value);return;}if(e.target.id==='segment-storyline'){
  const story=model.data.storylines.find(s=>s.id===e.target.value),form=e.target.closest('form');
  if(story&&form){const task=model.data.creative_tasks.find(t=>t.storyline_id===story.id);
@@ -312,9 +337,9 @@ app.addEventListener('change',e=>{if(['first','second'].includes(e.target.name)&
   first.value=story.wrestler_ids[0];second.innerHTML=optionList(roster().filter(w=>w.division===who(story.wrestler_ids[0]).division),story.wrestler_ids[1]);
   if(task){form.elements.namedItem('kind').value=task.kind;form.elements.namedItem('title').value=task.title;form.elements.namedItem('duration').value=task.duration;}
   else{/* Ordinary segments keep their own player-authored title. */}
-  syncParticipantChoices(form);
+  syncParticipantChoices(form);syncBookingEligibility(form);
   const isMatch=form.elements.namedItem('kind').value==='match';document.querySelectorAll('.match-config').forEach(el=>el.classList.toggle('hidden',!isMatch));document.querySelectorAll('.promo-config').forEach(el=>el.classList.toggle('hidden',isMatch));
  }return;
- }if(e.target.id==='roster-filter'){model.filter=e.target.value;render();}if(e.target.id==='division-filter'){model.division=e.target.value;render();} if(e.target.id==='segment-kind'){const isMatch=e.target.value==='match';document.querySelectorAll('.match-config').forEach(el=>el.classList.toggle('hidden',!isMatch));document.querySelectorAll('.promo-config').forEach(el=>el.classList.toggle('hidden',isMatch));}});
+ }if(e.target.id==='roster-filter'){model.filter=e.target.value;render();}if(e.target.id==='division-filter'){model.division=e.target.value;render();} if(e.target.id==='segment-kind'){syncBookingEligibility(e.target.closest('form'));const isMatch=e.target.value==='match';document.querySelectorAll('.match-config').forEach(el=>el.classList.toggle('hidden',!isMatch));document.querySelectorAll('.promo-config').forEach(el=>el.classList.toggle('hidden',isMatch));}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&model.modal){model.modal=null;render();}});
 refresh().catch(e=>{app.innerHTML=`<div class="boot"><h2>Unable to start Ringside</h2><p>${safe(e.message)}</p><p>Run the FastAPI server and reload the page.</p></div>`;});
