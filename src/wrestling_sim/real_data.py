@@ -54,7 +54,7 @@ def connection(path: str | Path = DEFAULT_DB):
     conn.executescript(SCHEMA)
     return conn
 
-def sparql_query(limit: int = 100) -> str:
+def sparql_query(limit: int = 100, offset: int = 0) -> str:
     """Restrict the person set *before* fetching optional biography fields.
 
     The original query grouped and sorted every professional wrestler in
@@ -62,6 +62,8 @@ def sparql_query(limit: int = 100) -> str:
     """
     if not 1 <= limit <= 500:
         raise ValueError("Limit must be between 1 and 500.")
+    if not 0 <= offset <= 5000:
+        raise ValueError("Offset must be between 0 and 5000.")
     return f"""SELECT ?person ?personLabel (SAMPLE(?dobValue) AS ?dob)
            (SAMPLE(?genderValue) AS ?gender)
            (SAMPLE(?heightValue) AS ?height)
@@ -72,7 +74,9 @@ WHERE {{
       ?person wdt:P106 wd:Q13474373; wdt:P31 wd:Q5.
       FILTER NOT EXISTS {{ ?person wdt:P570 ?deathDate. }}
     }}
+    ORDER BY ?person
     LIMIT {int(limit)}
+    OFFSET {int(offset)}
   }}
   OPTIONAL {{ ?person wdt:P569 ?dobValue. }}
   OPTIONAL {{ ?person wdt:P21 ?genderValue. }}
@@ -83,13 +87,13 @@ WHERE {{
 GROUP BY ?person ?personLabel"""
 
 
-def fetch_wikidata(limit=100):
+def fetch_wikidata(limit=100, offset=0):
     """Fetch using a courteous client identity and bounded transient retries.
 
     Network failures are surfaced as readable errors instead of a urllib stack
     trace. A 403 is never retried; a 429 is retried only after Retry-After.
     """
-    url = SOURCE + "?" + urlencode({"query": sparql_query(limit), "format":"json"})
+    url = SOURCE + "?" + urlencode({"query": sparql_query(limit, offset), "format":"json"})
     request = Request(url, headers={
         "Accept":"application/sparql-results+json",
         "User-Agent":"RINGSIDE-Wrestling-Simulator/1.7 (https://github.com/DhrumilParekh1/Wsimv1.5; open-data catalogue)",
@@ -255,19 +259,24 @@ def seed_game(path=DEFAULT_DB, save="saves/real_pilot.db", limit=100, seed=2026)
 def main():
     parser=argparse.ArgumentParser(description="Sourced real-wrestler data pilot (Wikidata CC0)")
     sub=parser.add_subparsers(dest="command",required=True)
-    for cmd in ("sync","list","seed"):
+    for cmd in ("sync","list","seed","seed-universe"):
         sp=sub.add_parser(cmd)
         sp.add_argument("--db",default=str(DEFAULT_DB))
         sp.add_argument("--limit",type=int,default=100 if cmd!="list" else 20)
-        if cmd=="seed":sp.add_argument("--save",default="saves/real_pilot.db")
+        if cmd=="sync":sp.add_argument("--offset",type=int,default=0)
+        if cmd in ("seed","seed-universe"):
+            sp.add_argument("--save",default="saves/real_universe.db" if cmd=="seed-universe" else "saves/real_pilot.db")
     args=parser.parse_args()
     try:
         if args.command=="sync":
-            result=ingest(fetch_wikidata(args.limit),args.db)
+            result=ingest(fetch_wikidata(args.limit,args.offset),args.db)
         elif args.command=="list":
             result=list_people(args.db,args.limit)
-        else:
+        elif args.command=="seed":
             result=seed_game(args.db,args.save,args.limit)
+        else:
+            from .real_universe import seed_universe
+            result=seed_universe(args.db,args.save)
     except (RuntimeError,ValueError,FileNotFoundError,FileExistsError) as exc:
         parser.exit(1, f"RINGSIDE real-data import: {exc}\n")
     print(json.dumps(result,indent=2,ensure_ascii=False))
