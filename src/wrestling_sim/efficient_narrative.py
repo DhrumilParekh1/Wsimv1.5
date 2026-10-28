@@ -3,10 +3,26 @@
 Facts and match execution are immutable; AI supplies only validated atmosphere.
 """
 from __future__ import annotations
+import re
 from .narrative import _generate, _clean_fan_post
 from .auto_narrative import _alert
 from .memories import relevant_memories
 from .report_analysis import analyze_segment, consistent_ai_reaction
+
+
+def _only_segment_people(text, segment, state):
+    """Reject named performers from other segments, preserving canonical data."""
+    if not isinstance(text,str):
+        return False
+    active=set(segment.get('participants',[]))
+    other=[w.name for w in state.wrestlers.values() if w.id not in active]
+    low=text.casefold()
+    for name in other:
+        if len(name)<4:
+            continue
+        if re.search(r'(?<!\\w)'+re.escape(name.casefold())+r'(?!\\w)',low):
+            return False
+    return True
 
 
 def auto_show_fast(state, show_id: str, progress=None):
@@ -73,7 +89,7 @@ def auto_show_fast(state, show_id: str, progress=None):
                 normalized=' '.join(clean.casefold().split())
                 if normalized in seen:
                     continue
-                if consistent_ai_reaction(clean,analysis):
+                if _only_segment_people(clean,match,state) and consistent_ai_reaction(clean,analysis):
                     seen.add(normalized)
                     post['text']=clean;post['source']='ollama';changed+=1
         return changed
@@ -116,9 +132,9 @@ def auto_show_fast(state, show_id: str, progress=None):
                     raise ValueError('New or unsupported move in Ollama commentary')
             for seg,line,reaction in zip(batch,lines,reactions):
                 analysis=seg.get('analysis') or analyze_segment(seg)
-                if consistent_ai_reaction(line,analysis) and seg.get('highlights'):
+                if _only_segment_people(line,seg,state) and consistent_ai_reaction(line,analysis) and seg.get('highlights'):
                     seg['highlights'][0]['ai_flavour']=line.strip()
-                if consistent_ai_reaction(reaction,analysis):
+                if _only_segment_people(reaction,seg,state) and consistent_ai_reaction(reaction,analysis):
                     seg['fan_report']={'text':reaction.strip(),'source':'ollama'}
                 count+=1
         return count
@@ -131,7 +147,8 @@ def auto_show_fast(state, show_id: str, progress=None):
             facts=[]
             for seg in batch:
                 participants=[state.wrestlers[wid] for wid in seg['participants']]
-                story=next((s for s in state.storylines.values() if all(w.id in s.wrestler_ids for w in participants)),None)
+                story_id=next((card.storyline_id for card in show.segments if card.title==seg['title']),None)
+                story=state.storylines.get(story_id) if story_id else None
                 facts.append({'segment':seg['title'],'type':seg['kind'],
                     'performers':[{'name':w.name,'role':w.role,'personality':w.personality,
                                    'traits':w.traits[:5], 'mic_skills':w.attributes['mic_skills']}
@@ -156,6 +173,8 @@ def auto_show_fast(state, show_id: str, progress=None):
             for seg,line in zip(batch,lines):
                 if not isinstance(line,str) or not 40<=len(line.strip())<=700 or '<' in line or 'http' in line.lower():
                     raise ValueError('Invalid promo dialogue')
+                if not _only_segment_people(line,seg,state):
+                    raise ValueError('Dialogue invented an unrelated wrestler')
                 if not any(state.wrestlers[wid].name.lower() in line.lower() for wid in seg['participants']):
                     raise ValueError('Dialogue does not contain an assigned wrestler')
                 forbidden=('signed the contract','became champion','suffered an injury','is hospitalized',
