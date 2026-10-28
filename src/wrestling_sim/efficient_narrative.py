@@ -20,7 +20,7 @@ def _only_segment_people(text, segment, state):
     for name in other:
         if len(name)<4:
             continue
-        if re.search(r'(?<!\\w)'+re.escape(name.casefold())+r'(?!\\w)',low):
+        if re.search(r'(?<!\w)'+re.escape(name.casefold())+r'(?!\w)',low):
             return False
     return True
 
