@@ -23,8 +23,8 @@ def check_title_match(state:GameState, segment:Segment) -> None:
         raise ValueError('Invalid championship')
     if any(state.wrestlers[w].division!=belt['division'] for w in segment.wrestler_ids):
         raise ValueError('Title match cannot mix divisions')
-    if belt['holder_id'] and belt['holder_id'] not in segment.wrestler_ids:
-        raise ValueError('The defending champion must be in the match')
+    if not belt['holder_id'] or belt['holder_id'] not in segment.wrestler_ids:
+        raise ValueError('A championship may only be defended when its current champion participates')
     if not segment.planned_winner_id or segment.finish_type not in ('clean','flash_pin','interference'):
         raise ValueError('Title matches require a named winner and eligible finish')
 
