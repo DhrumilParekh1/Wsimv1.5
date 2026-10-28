@@ -34,9 +34,28 @@ def generate_segment_highlights(state: GameState, segment: Segment, rng: random.
         speaker=participants[i%len(participants)]
         minute=min(segment.duration,max(1,round((i+.5)*segment.duration/count)))
         content=OPENERS[segment.kind] if i==0 else RESPONSES[segment.kind]
-        if segment.creative_direction=='slow_burn' and i>0:
+        # Solo promos use topic-specific beats, not rivalry creative directions.
+        solo_topic=segment.promo_topic if segment.kind=='promo' and not segment.storyline_id else None
+        if solo_topic:
+            topic_text={
+                'self_hype':'promises the crowd a memorable performance',
+                'ambitions':'shares their ambitions for the coming season',
+                'address_fans':'addresses the supporters and responds to their expectations',
+                'recent_win':'reflects on a recent victory',
+                'recent_loss':'addresses a recent defeat and vows to improve',
+                'open_challenge':'announces an open championship challenge for a future event',
+                'title_reign':'reflects on their in-game championship reign',
+                'callout':'calls out a potential future opponent'
+            }
+            if i==0:
+                content=topic_text[solo_topic]
+            elif segment.promo_interrupt and len(participants)>1 and speaker.id!=participants[0].id:
+                content='interrupts the speaker and demands a response'
+            else:
+                content='develops the selected topic without starting an unrelated rivalry'
+        if not solo_topic and segment.creative_direction=='slow_burn' and i>0:
             content='keeps the disagreement unresolved and adds another question'
-        if segment.creative_direction=='resolve' and i==count-1:
+        if not solo_topic and segment.creative_direction=='resolve' and i==count-1:
             content='offers a clear conclusion to this chapter of the rivalry'
         skill=(.34*speaker.attributes['mic_skills']+.24*speaker.attributes['charisma']+
                .24*speaker.attributes['character_work']+.18*speaker.attributes['presence'])
