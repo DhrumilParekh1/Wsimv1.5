@@ -4,6 +4,7 @@ Facts and match execution are immutable; AI supplies only validated atmosphere.
 """
 from __future__ import annotations
 import re
+from difflib import SequenceMatcher
 from .narrative import _generate, _clean_fan_post
 from .auto_narrative import _alert
 from .memories import relevant_memories
@@ -180,6 +181,15 @@ def auto_show_fast(state, show_id: str, progress=None):
                     raise ValueError('Dialogue invented an unrelated wrestler')
                 if not any(state.wrestlers[wid].name.lower() in line.lower() for wid in seg['participants']):
                     raise ValueError('Dialogue does not contain an assigned wrestler')
+                # Reject conspicuously repeated dialogue lines, rather than
+                # presenting generic duplicated speech as wrestler character work.
+                speeches=[part.split(':',1)[-1].strip().lower() for part in line.splitlines()
+                          if part.strip()]
+                if len(speeches)>1 and any(
+                    SequenceMatcher(None,a,b).ratio()>=.82
+                    for j,a in enumerate(speeches) for b in speeches[j+1:]
+                ):
+                    raise ValueError('Repeated Ollama dialogue was discarded')
                 forbidden=('signed the contract','became champion','suffered an injury','is hospitalized',
                            'announces their retirement')
                 if any(phrase in line.lower() for phrase in forbidden):
