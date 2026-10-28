@@ -94,7 +94,13 @@ def book_show(state: GameState, name: str, segments: list[Segment], duration: in
             if match_appearances.intersection(segment.wrestler_ids):
                 raise ValueError("A wrestler can only participate in one match per show")
             match_appearances.update(segment.wrestler_ids)
-    if featured_divisions != {"men", "women"}:
+    custom=any(c.get('type')=='company_foundation' for c in state.campaigns)
+    if custom:
+        represented={state.wrestlers[segment.wrestler_ids[0]].division
+                     for segment in segments if segment.wrestler_ids}
+        if represented!={'men','women'}:
+            raise ValueError("The weekly broadcast must feature both divisions.")
+    elif featured_divisions != {"men", "women"}:
         raise ValueError("Every weekly show needs at least one men's and one women's storyline segment")
     show = Show(id=state.generate_id("show"), name=name.strip(), week=state.week,
                 duration=duration, segments=segments)
