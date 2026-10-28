@@ -90,7 +90,8 @@ function booking(){
  <div class="field"><label>Segment category</label><select class="select" name="kind" id="segment-kind"><optgroup label="MATCH">${kinds.slice(0,1).map(k=>`<option value="${k[0]}" ${selectedKind===k[0]?'selected':''}>${k[1]}</option>`).join('')}</optgroup><optgroup label="PROMOS & BACKSTAGE">${kinds.slice(1,6).map(k=>`<option value="${k[0]}" ${selectedKind===k[0]?'selected':''}>${k[1]}</option>`).join('')}</optgroup><optgroup label="OTHER ANGLES">${kinds.slice(6).map(k=>`<option value="${k[0]}" ${selectedKind===k[0]?'selected':''}>${k[1]}</option>`).join('')}</optgroup></select></div>
  <div class="field"><label>Duration (minutes)</label><input class="input" name="duration" type="number" min="1" max="60" value="${p.duration||12}" required></div>
  <div class="field"><label>Performer 1</label><select class="select" name="first" required>${optionList(r,p.wrestler_ids?.[0]||'')}</select></div><div class="field"><label id="second-performer-label">Performer 2 (required for matches)</label><select class="select" name="second">${optionList(r.filter(w=>!p.wrestler_ids?.[0]||w.division===who(p.wrestler_ids[0])?.division),p.wrestler_ids?.[1]||'')}</select></div>
- <div class="field"><label>Active storyline</label><select class="select" name="storyline_id" id="segment-storyline">${selectStory().replace(`value="${safe(p.storyline_id||'')}"`,`value="${safe(p.storyline_id||'')}" selected`)}</select></div><div class="field"><label>Creative direction</label><select name="creative_direction" class="select">${[["advance","Advance"],["slow_burn","Slow burn"],["escalate","Escalate"],["swerve","Twist"],["resolve","Resolve"]].map(([v,l])=>`<option value="${v}" ${p.creative_direction===v?"selected":""}>${l}</option>`).join("")}</select><small>Direction affects hype, story coherence, fan trust and the expectations of the audience. Repeated escalation and premature resolution can backfire.</small></div>
+ <div class="field"><label>Active storyline</label><select class="select" name="storyline_id" id="segment-storyline">${selectStory().replace(`value="${safe(p.storyline_id||'')}"`,`value="${safe(p.storyline_id||'')}" selected`)}</select></div><div class="field" id="storyline-direction-config"><label>Storyline creative direction</label><select name="creative_direction" class="select">${[["advance","Advance"],["slow_burn","Slow burn"],["escalate","Escalate"],["swerve","Twist"],["resolve","Resolve"]].map(([v,l])=>`<option value="${v}" ${p.creative_direction===v?"selected":""}>${l}</option>`).join("")}</select><small>Direction affects hype, story coherence, fan trust and the expectations of the audience. Repeated escalation and premature resolution can backfire.</small></div>
+ <div class="field full promo-config ${selectedKind==='match'?'hidden':''}" id="promo-topic-config"><label>Solo promo purpose</label><select name="promo_topic" class="select"><option value="self_hype">Hype themselves up</option><option value="ambitions">Discuss personal ambitions</option><option value="address_fans">Address the audience</option><option value="callout">Call out a potential opponent</option></select><small>Additional options appear for champions and recent wins or losses.</small></div>
  <div class="field match-config ${selectedKind!=='match'?'hidden':''}"><label>Primary style (65% with two / 55% with three)</label><select name="match_style" class="select">${['balanced','technical','high_flying','power','brawl','storytelling'].map(k=>`<option value="${k}">${safe(k.replaceAll('_',' '))}</option>`).join('')}</select></div>
  <div class="field match-config ${selectedKind!=='match'?'hidden':''}"><label>Secondary style (35% with two / 30% with three)</label><select name="match_style_secondary" class="select">${['storytelling','technical','high_flying','power','brawl','balanced'].map(k=>`<option value="${k}">${safe(k.replaceAll('_',' '))}</option>`).join('')}</select></div>
  <div class="field match-config ${selectedKind!=='match'?'hidden':''}"><label>Optional third style (15% when selected)</label><select name="match_style_tertiary" class="select"><option value="">None — two-style match</option>${['balanced','technical','high_flying','power','brawl','storytelling'].map(k=>`<option value="${k}">${safe(k.replaceAll('_',' '))}</option>`).join('')}</select></div>
@@ -260,7 +261,7 @@ function syncBookingEligibility(form){
  const mandatory=['match','confrontation'].includes(kind);
  if(secondInput)secondInput.required=mandatory;
  const label=form.querySelector('#second-performer-label');
- if(label)label.textContent=mandatory?'Performer 2 (required)':'Performer 2 (optional)';
+ if(label)label.textContent=mandatory?'Performer 2 (required)':kind==='promo'?'Interrupting wrestler (optional)':'Performer 2 (optional)';
  const title=form.elements.namedItem('championship_id');
  if(title){
   const ids=[first,second].filter(Boolean);
@@ -270,7 +271,30 @@ function syncBookingEligibility(form){
   title.value=eligible.some(b=>b.id===selected)?selected:'';
  }
  const brawl=form.elements.namedItem('promo_brawl');
- if(brawl){brawl.disabled=kind!=='promo'||!second;brawl.checked=brawl.disabled?false:brawl.checked;}
+ if(brawl){
+  brawl.disabled=kind!=='promo'||!second;
+  brawl.checked=brawl.disabled?false:brawl.checked;
+  brawl.closest('.field')?.classList.toggle('hidden',brawl.disabled);
+ }
+ const soloPromo=kind==='promo'&&!form.elements.namedItem('storyline_id')?.value;
+ form.querySelector('#promo-topic-config')?.classList.toggle('hidden',!soloPromo);
+ form.querySelector('#storyline-direction-config')?.classList.toggle('hidden',soloPromo);
+ const topic=form.elements.namedItem('promo_topic');
+ if(topic&&soloPromo){
+  const prior=topic.value;
+  const choices=[['self_hype','Hype themselves up'],['ambitions','Discuss ambitions'],
+    ['address_fans','Address the fans'],['callout','Call out a specific wrestler']];
+  if((model.data.championships||[]).some(b=>b.holder_id===first)){
+    choices.push(['open_challenge','Announce an open title challenge'],
+                 ['title_reign','Discuss championship reign']);
+  }
+  const played=(model.data.shows||[]).flatMap(s=>s.result?.segments||[])
+    .filter(seg=>seg.kind==='match'&&seg.participants?.includes(first)).slice(-8);
+  if(played.some(seg=>seg.winner===first))choices.push(['recent_win','Address a recent victory']);
+  if(played.some(seg=>seg.winner&&seg.winner!==first))choices.push(['recent_loss','Respond to a recent defeat']);
+  topic.innerHTML=choices.map(([value,label])=>`<option value="${value}">${label}</option>`).join('');
+  topic.value=choices.some(([v])=>v===prior)?prior:'self_hype';
+ }
 }
 function addSegment(form){
  syncBookingEligibility(form);
@@ -280,6 +304,8 @@ function addSegment(form){
   wrestler_ids:ids,storyline_id:f.get('storyline_id')||null,promotion_budget:Number(f.get('promotion_budget')||0),
   planned_winner_id:kind==='match'?(f.get('planned_winner_id')||null):null,
   championship_id:kind==='match'?(f.get('championship_id')||null):null,
+  promo_topic:kind==='promo'&&!f.get('storyline_id')?f.get('promo_topic')||'self_hype':null,
+  promo_interrupt:kind==='promo'&&ids.length===2,
   creative_direction:f.get('creative_direction')||'advance',match_style:f.get('match_style')||'balanced',
   match_styles:kind==='match'?[f.get('match_style'),f.get('match_style_secondary'),f.get('match_style_tertiary')].filter(Boolean):[],
   finish_type:f.get('finish_type')||'clean',stipulation:f.get('stipulation')||'standard',
