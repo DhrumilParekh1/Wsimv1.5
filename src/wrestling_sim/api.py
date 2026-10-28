@@ -485,9 +485,23 @@ def _portrait_data(state):
     for item in state.activity_log:
         if item.get('type')=='real_roster_provenance' and item.get('wikidata_id'):
             linked[item['wrestler_id']]=item['wikidata_id']
+    # After a campaign is created, a later photo sync can resolve formerly
+    # unknown official roster IDs. Match only exact stored sourced names.
+    from .real_universe import normalize_name
+    from .real_data import connection
+    names={}
+    try:
+        with connection(path) as db:
+            for qid,name in db.execute("SELECT wikidata_id,display_name FROM people"):
+                names.setdefault(normalize_name(name),set()).add(qid)
+    except OSError:
+        pass
     result={}
     for wid in state.wrestlers:
         qid=linked.get(wid) or (wid[3:] if wid.startswith('wd_Q') else None)
+        if qid is None and wid.startswith('rw_'):
+            matches=names.get(normalize_name(state.wrestlers[wid].name),set())
+            qid=next(iter(matches)) if len(matches)==1 else None
         if qid in by_id:result[wid]=by_id[qid]
     return result
 
