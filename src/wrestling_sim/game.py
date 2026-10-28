@@ -89,6 +89,23 @@ def book_show(state: GameState, name: str, segments: list[Segment], duration: in
                 raise ValueError(f"Unknown storyline: {segment.storyline_id}")
             if not set(segment.wrestler_ids).issubset(storyline.wrestler_ids):
                 raise ValueError("Segment wrestlers must belong to the attached storyline")
+        if segment.kind=="promo":
+            if segment.promo_brawl and len(segment.wrestler_ids)<2:
+                raise ValueError("A ringside brawl needs an interrupting wrestler.")
+            if segment.promo_topic in ("open_challenge","title_reign"):
+                if not any(belt.get("holder_id")==segment.wrestler_ids[0]
+                           for belt in state.championships.values()):
+                    raise ValueError("Only the reigning champion can deliver a title-reign or open-challenge promo.")
+            if segment.promo_topic in ("recent_win","recent_loss"):
+                recent=[]
+                for past in state.shows.values():
+                    if not past.simulated or not past.result:continue
+                    for result in past.result.get("segments",[]):
+                        if result.get("kind")=="match" and segment.wrestler_ids[0] in result.get("participants",[]):
+                            recent.append(result)
+                if not any((item.get("winner")==segment.wrestler_ids[0])==(segment.promo_topic=="recent_win")
+                           for item in recent[-8:]):
+                    raise ValueError("This promo topic requires a recorded matching win or defeat.")
         check_title_match(state,segment)
         if segment.kind == "match":
             if match_appearances.intersection(segment.wrestler_ids):
