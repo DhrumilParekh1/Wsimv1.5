@@ -89,7 +89,7 @@ def calendar(state: GameState, horizon=16) -> list[dict]:
         if year<2026:continue
         ppv=week in c.ppv_weeks
         ppv_index=c.ppv_weeks.index(week) if ppv else 0
-        name=f'Aurora: {ppv_names[ppv_index%len(ppv_names)]}' if ppv else f'Aurora Weekly · W{week}'
+        name=f'{c.name}: {ppv_names[ppv_index%len(ppv_names)]}' if ppv else f'{c.name} Weekly · W{week}'
         show=next((s for s in state.shows.values() if s.week==week and s.result and s.result.get('year')==year),None)
         pending=next((s for s in state.shows.values() if s.week==week and not s.simulated and year==state.year),None)
         if show or pending:name=(show or pending).name
@@ -118,7 +118,7 @@ def hire_staff(state: GameState, kind: str, staff_id: str):
     if fee>state.player_company.money: raise ValueError('Insufficient funds for signing or buyout')
     state.player_company.money-=fee
     member['company_id']=state.player_company_id
-    add_world_news(state,'staff',f'{member["name"]} joins Aurora',f'{kind.capitalize()} hired for ${fee:,}.',state.player_company_id)
+    add_world_news(state,'staff',f'{member["name"]} joins {state.player_company.name}',f'{kind.capitalize()} hired for ${fee:,}.',state.player_company_id)
     return dict(name=member['name'],kind=kind,fee=fee)
 
 
