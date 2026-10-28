@@ -63,6 +63,58 @@ def _metadata(image_title):
                 "license":license_name,"license_url":license_url}
     return None
 
+def resolve_roster_identities(path,limit=80):
+    """Find missing official-roster name identities with exact label/alias +
+    wrestler occupation checks. Reject all ambiguous or partial matches.
+    """
+    from .real_data import connection
+    from .real_universe import OFFICIAL_ROSTERS, normalize_name
+    if not 1<=limit<=80:
+        raise ValueError("Roster resolution limit must be 1..80.")
+    names=[name for group in OFFICIAL_ROSTERS.values()
+           for d in ("men","women") for name in group[d]]
+    accepted=skipped=0
+    with connection(path) as db:
+        present={normalize_name(row[0]) for row in db.execute("SELECT display_name FROM people")}
+        for name in names[:limit]:
+            if normalize_name(name) in present:
+                continue
+            try:
+                results=_get_json(WIKIDATA,{"action":"wbsearchentities","format":"json",
+                              "language":"en","type":"item","search":name,"limit":5}).get("search",[])
+                qids=[hit["id"] for hit in results if re.fullmatch(r"Q[1-9][0-9]*",hit.get("id",""))]
+                if not qids:
+                    skipped+=1
+                    continue
+                entities=_get_json(WIKIDATA,{"action":"wbgetentities","format":"json",
+                                   "ids":"|".join(qids),"props":"labels|aliases|claims"}).get("entities",{})
+                valid=[]
+                for qid in qids:
+                    entity=entities.get(qid,{})
+                    occupations=entity.get("claims",{}).get("P106",[])
+                    is_wrestler=any(x.get("mainsnak",{}).get("datavalue",{}).get("value",{}).get("id")=="Q13474373"
+                                    for x in occupations)
+                    labels=[entity.get("labels",{}).get("en",{}).get("value","")]
+                    labels.extend(x.get("value","") for x in entity.get("aliases",{}).get("en",[]))
+                    if is_wrestler and any(normalize_name(label)==normalize_name(name) for label in labels):
+                        valid.append(qid)
+                if len(valid)!=1:
+                    skipped+=1
+                    continue
+                qid=valid[0]
+                db.execute("""INSERT OR IGNORE INTO people
+                  (wikidata_id,display_name,source_url,retrieved_at)
+                  VALUES(?,?,?,?)""",(qid,name,"https://www.wikidata.org/wiki/"+qid,
+                          datetime.now(timezone.utc).isoformat()))
+                present.add(normalize_name(name))
+                accepted+=1
+            except (OSError,RuntimeError,ValueError,KeyError,TypeError):
+                skipped+=1
+                continue
+        db.commit()
+    return {"matched_roster_identities":accepted,"unresolved":skipped}
+
+
 def sync_photos(path,limit=100):
     """Only reuse exact Wikidata IDs, never fuzzy-face matching."""
     from .real_data import connection
