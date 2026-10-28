@@ -36,7 +36,7 @@ function titlesView(){let belts=model.data.championships||[];return `${heading('
  <div class="contract-list">${belts.map(b=>`<section class="card"><div class="eyebrow">${safe(b.division.toUpperCase())} · PRESTIGE ${n1(b.prestige)}</div><h3>${safe(b.name)}</h3><p>${b.holder_id?`${img(b.holder_id,'sm')} <strong>${safe(who(b.holder_id)?.name||b.holder_id)}</strong>`:'Vacant championship'}</p><p class="micro">Successful defenses: ${b.defenses} · Recorded reign events: ${(b.lineage||[]).length}</p><div class="timeline">${(b.lineage||[]).slice(-4).reverse().map(l=>`<div class="timeline-item">Week ${l.week} · ${safe(who(l.winner_id)?.name||l.winner_id)} ${l.change?'won':'retained'} ${safe(b.name)}</div>`).join('')}</div></section>`).join('')}</div>`;}
 const storyTag=id=>linkedStories(id).length?linkedStories(id).map(s=>`<span class="story-link" data-nav="stories">${safe(s.title)}</span>`).join(''):'<span class="micro">No active storyline</span>';
 const selectStory=()=>`<option value="">No storyline</option>${model.data.storylines.filter(s=>s.stage!=='resolved').map(s=>`<option value="${safe(s.id)}">[${safe(who(s.wrestler_ids[0])?.division||'?')}] ${safe(s.title)}</option>`).join('')}`;
-const model={narrationStatus:null,loading:false,view:'dashboard',data:null,modal:null,draft:[],search:'',filter:'all',division:'all',busy:false,lastResult:null,liveIndex:0,highlightIndex:0,prefill:null,room:null,previousView:'roster',setupDismissed:false,companyTier:'startup'};
+const model={narrationStatus:null,loading:false,view:'dashboard',data:null,modal:null,draft:[],search:'',filter:'all',division:'all',busy:false,lastResult:null,liveIndex:0,highlightIndex:0,prefill:null,room:null,previousView:'roster',setupDismissed:false,companyTier:'startup',companyName:'My Wrestling Promotion'};
 async function request(url,method='GET',payload){
  const settings={method,headers:{Accept:'application/json'}};
  if(payload!==undefined){settings.headers['Content-Type']='application/json';settings.body=JSON.stringify(payload);}
@@ -189,7 +189,7 @@ function companySetupView(){
   '<div class="eyebrow">CREATE YOUR WRESTLING COMPANY</div>'+
   '<h1>Start your own promotion</h1><p>Compete against WWE, AEW, TNA and ROH. Draft wrestlers into your new company. All contracts, budgets and transfers are fictional game rules.</p>'+
   '<form id="setup-company-form" class="form-grid">'+
-  '<div class="field full"><label>Promotion name</label><input class="input" name="name" required minlength="3" maxlength="55" value="My Wrestling Promotion"></div>'+
+  '<div class="field full"><label>Promotion name</label><input class="input" name="name" id="setup-company-name" required minlength="3" maxlength="55" value="${safe(model.companyName)}"></div>'+
   '<div class="field full"><label>Starting level</label><select class="select" id="setup-tier" name="tier">'+
   [['indie','Indie · 1 man + 1 woman · $75,000 · 45-minute broadcasts'],
    ['startup','Startup · 2 men + 2 women · $400,000 · 60-minute broadcasts'],
@@ -205,7 +205,7 @@ function companySetupView(){
   '</form><button class="btn btn-ghost" data-skip-company-setup="1">Continue existing WWE test campaign instead</button></section>';
 }
 
-function render(){if(!model.data)return;if(model.data.setup_eligible&&!model.setupDismissed){app.innerHTML=companySetupView();return;}const views={dashboard,booker:booking,roster:rosterView,stories:storiesView,press:pressView,titles:titlesView,creative:creativeView,staff:staffView,scouts:scoutsView,coaches:coachesView,market,calendar:calendarView,news:worldNewsView,social:socialView,sponsors:sponsorsView,finances};if(model.room){app.innerHTML=roomView();return;}app.innerHTML=`<div class="shell">${navHtml()}<div class="content">${header()}<main class="main-content">${views[model.view]()}</main></div></div>${mobileNav()}${modalHtml()}${model.loading?`<div class="simulation-loading" role="status" aria-live="polite"><div class="loading-dialog"><div class="loading-spinner"></div><div class="eyebrow">RINGSIDE · PRODUCTION CONTROL</div><h2>Simulating your show</h2><p>Calculating individual performances, audience responses, injuries, and finances. Numerical results will be saved before Ollama commentary starts.</p></div></div>`:''}`;}
+function render(){if(!model.data)return;if(model.data.setup_eligible&&!model.setupDismissed){app.innerHTML=companySetupView();return;}const views={dashboard,booker:booking,roster:rosterView,stories:storiesView,press:pressView,titles:titlesView,creative:creativeView,staff:staffView,scouts:scoutsView,coaches:coachesView,market,calendar:calendarView,news:worldNewsView,social:socialView,sponsors:sponsorsView,finances};if(model.room){app.innerHTML=roomView();return;}app.innerHTML=`<div class="shell">${navHtml()}<div class="content">${header()}<main class="main-content">${views[model.view]()}</main></div></div>${mobileNav()}${modalHtml()}${model.loading?`<div class="simulation-loading" role="status" aria-live="polite"><div class="loading-dialog"><div class="loading-spinner"></div><div class="eyebrow">RINGSIDE · PRODUCTION CONTROL</div><h2>Simulating your show</h2><p>Calculating individual performances, audience responses, injuries, and finances. Numerical results will be saved before Ollama commentary starts.</p></div></div>`:''}`;const form=document.querySelector('#segment-form');if(form)syncBookingEligibility(form);}
 async function watchNarration(showId){
   for(let tries=0;tries<48;tries++){
     await new Promise(resolve=>setTimeout(resolve,2500));
@@ -398,6 +398,7 @@ function syncParticipantChoices(form){
    const previous=select.value;select.innerHTML=optionList(participants,previous,field==='planned_winner_id'?'Choose the winner':'Choose the wrestler in this segment');
  }
 }
+app.addEventListener('input',e=>{if(e.target.id==='setup-company-name')model.companyName=e.target.value;});
 app.addEventListener('change',e=>{if(e.target.id==='setup-tier'){model.companyTier=e.target.value;render();return;}if(['first','second'].includes(e.target.name)&&e.target.closest('#segment-form')){syncParticipantChoices(e.target.closest('#segment-form'));syncBookingEligibility(e.target.closest('#segment-form'));}
  if(e.target.dataset.cardTier){run(()=>request(`/wrestlers/${encodeURIComponent(e.target.dataset.cardTier)}/tier`,'POST',{tier:e.target.value}),'Roster tier updated.');return;}if(e.target.id==='quick-nav'){changeView(e.target.value);return;}if(e.target.id==='segment-storyline'){
  const story=model.data.storylines.find(s=>s.id===e.target.value),form=e.target.closest('form');
@@ -407,8 +408,8 @@ app.addEventListener('change',e=>{if(e.target.id==='setup-tier'){model.companyTi
   if(task){form.elements.namedItem('kind').value=task.kind;form.elements.namedItem('title').value=task.title;form.elements.namedItem('duration').value=task.duration;}
   else{/* Ordinary segments keep their own player-authored title. */}
   syncParticipantChoices(form);syncBookingEligibility(form);
-  const isMatch=form.elements.namedItem('kind').value==='match';document.querySelectorAll('.match-config').forEach(el=>el.classList.toggle('hidden',!isMatch));document.querySelectorAll('.promo-config').forEach(el=>el.classList.toggle('hidden',isMatch));
+  const isMatch=form.elements.namedItem('kind').value==='match';document.querySelectorAll('.match-config').forEach(el=>el.classList.toggle('hidden',!isMatch));document.querySelectorAll('.promo-config').forEach(el=>el.classList.toggle('hidden',isMatch));syncBookingEligibility(e.target.closest('form'));
  }return;
- }if(e.target.id==='roster-filter'){model.filter=e.target.value;render();}if(e.target.id==='division-filter'){model.division=e.target.value;render();} if(e.target.id==='segment-kind'){syncBookingEligibility(e.target.closest('form'));const isMatch=e.target.value==='match';document.querySelectorAll('.match-config').forEach(el=>el.classList.toggle('hidden',!isMatch));document.querySelectorAll('.promo-config').forEach(el=>el.classList.toggle('hidden',isMatch));}});
+ }if(e.target.id==='roster-filter'){model.filter=e.target.value;render();}if(e.target.id==='division-filter'){model.division=e.target.value;render();} if(e.target.id==='segment-kind'){syncBookingEligibility(e.target.closest('form'));const isMatch=e.target.value==='match';document.querySelectorAll('.match-config').forEach(el=>el.classList.toggle('hidden',!isMatch));document.querySelectorAll('.promo-config').forEach(el=>el.classList.toggle('hidden',isMatch));syncBookingEligibility(e.target.closest('form'));}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&model.modal){model.modal=null;render();}});
 refresh().catch(e=>{app.innerHTML=`<div class="boot"><h2>Unable to start Ringside</h2><p>${safe(e.message)}</p><p>Run the FastAPI server and reload the page.</p></div>`;});
