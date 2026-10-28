@@ -62,7 +62,9 @@ def sparql_query(limit: int = 100, offset: int = 0) -> str:
     """
     if not 1 <= limit <= 500:
         raise ValueError("Limit must be between 1 and 500.")
-    if not 0 <= offset <= 5000:\n        raise ValueError("Offset must be between 0 and 5000.")\n    return f"""SELECT ?person ?personLabel (SAMPLE(?dobValue) AS ?dob)
+    if not 0 <= offset <= 5000:
+        raise ValueError("Offset must be between 0 and 5000.")
+    return f"""SELECT ?person ?personLabel (SAMPLE(?dobValue) AS ?dob)
            (SAMPLE(?genderValue) AS ?gender)
            (SAMPLE(?heightValue) AS ?height)
            (SAMPLE(?massValue) AS ?mass)
