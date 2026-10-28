@@ -146,6 +146,15 @@ def build_universe(catalogue="data/real_wrestlers.db", seed=2026, add_independen
         company=state.companies[company_id]
         company.name=detail["name"]
         company.roster_limit=30
+        # Explicitly invented economy values; not claims of audited revenue.
+        scenario={
+            "player":(2500000,75,72),
+            "rival":(1800000,68,65),
+            "circuit":(950000,52,49),
+            "royal":(750000,45,46),
+        }
+        company.money,company.popularity,company.sponsor_interest=scenario[company_id]
+        company.viewership=max(1000,round(25000+company.popularity*4500))
         # Financial strength is an intentionally synthetic starting scenario,
         # never a claim about real-world finances, contract or gate receipts.
         for division in ("men","women"):
