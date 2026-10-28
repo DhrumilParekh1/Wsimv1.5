@@ -238,7 +238,7 @@ def seed_game(path=DEFAULT_DB, save="saves/real_pilot.db", limit=100, seed=2026)
                            division=division,growth=.5,runway=.5)
             if row["height_cm"] and 135<=row["height_cm"]<=240:
                 w.height_cm=row["height_cm"]
-            if row["weight_kg"] and 40<=row["weight_kg"]<=300:
+            if row["weight_kg"] and 45<=row["weight_kg"]<=260:
                 w.weight_kg=row["weight_kg"]
             w.discovery_tier="known"
             state.wrestlers[wid]=w

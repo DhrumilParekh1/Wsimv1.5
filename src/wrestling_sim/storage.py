@@ -49,6 +49,28 @@ def restore_game(data: dict) -> GameState:
         if len(moves) > 8:
             from .movesets import default_moveset
             raw['moveset'] = default_moveset(raw.get('id',''), raw.get('attributes',{}))
+    # V1.8 import repair: the first real-roster importer accepted source
+    # weights in the 40..300 kg range, while Wrestler allows only 45..260.
+    # Repair only imported real-name profiles, never arbitrary fictional saves.
+    # Preserve the source database; this is a *gameplay placeholder* correction.
+    for wid, raw in data.get('wrestlers', {}).items():
+        if not wid.startswith(('rw_', 'wd_')):
+            continue
+        value = raw.get('weight_kg', 90)
+        if not isinstance(value, (int, float)) or not 45 <= value <= 260:
+            raw['weight_kg'] = 90
+            data.setdefault('activity_log', []).append({
+                'type': 'real_data_profile_repair',
+                'wrestler_id': wid,
+                'field': 'weight_kg',
+                'original_value': value,
+                'replacement_value': 90,
+                'reason': 'Unsupported imported weight; substituted a fictional game default.',
+            })
+            data.setdefault('news', []).append(
+                f"Data compatibility repair: {raw.get('name', wid)} has a neutral "
+                "in-game weight placeholder; review the source catalogue."
+            )
     # Legacy weekly metrics used a 0–100 popularity index; migrate to
     # actual viewers without overwriting any existing recorded values.
     for metric in data.get('weekly_metrics', []):

@@ -103,7 +103,7 @@ def _make_member(person_id, name, division, employer, biographical, ordinal):
         weight=biographical.get("weight_kg")
         if isinstance(h,int) and 135<=h<=240:
             w.height_cm=h
-        if isinstance(weight,(int,float)) and 40<=weight<=300:
+        if isinstance(weight,(int,float)) and 45<=weight<=260:
             w.weight_kg=weight
     return w
 
