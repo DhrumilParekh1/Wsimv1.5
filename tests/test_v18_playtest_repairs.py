@@ -63,13 +63,14 @@ def test_press_feedback_is_non_numeric_and_neutral_is_zero(choice):
 
 def test_title_promo_eligibility_server_side():
     state=new_game()
-    invalid=Segment("promo",["phoenix"],12,"Claim Championship",promo_topic="open_challenge")
+    nonchamp=next(w.id for w in state.wrestlers.values() if w.company_id=="player" and w.division=="men" and all(b["holder_id"]!=w.id for b in state.championships.values()))
+    invalid=Segment("promo",[nonchamp],30,"Claim Championship",promo_topic="open_challenge")
     valid=Segment("promo",["steel"],12,"Champion Addresses Fans",promo_topic="title_reign")
     # Champion validation triggers during book_show, before saving.
     with pytest.raises(ValueError,match="reigning champion"):
         book_show(state,"Invalid challenge",[
             invalid,Segment("promo",["vale"],20,"Women"),
-            Segment("match",["steel","phoenix"],35,"Men",planned_winner_id="steel")
+            Segment("match",["steel","phoenix"],50,"Men",planned_winner_id="steel")
         ],duration=120)
     assert valid.promo_topic=="title_reign"
 
