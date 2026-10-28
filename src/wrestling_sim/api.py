@@ -436,12 +436,49 @@ def homepage():
     return FileResponse(WEB_DIR / 'index.html')
 
 
+class CompanySetupRequest(BaseModel):
+    name: str
+    tier: str
+    men: list[str]
+    women: list[str]
+
+
+@app.post('/ui/setup/company')
+def ui_setup_company(request: CompanySetupRequest):
+    """Apply only on an unplayed real-world save; keep an original save backup."""
+    from .company_creation import create_company
+    import shutil
+    from datetime import datetime, timezone
+    with service.lock:
+        try:
+            candidate=create_company(service.state,request.name,request.tier,
+                                     request.men,request.women)
+            if service.path.exists():
+                stamp=datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')
+                original=service.path
+                backup=original.with_name(original.name+'.before-company-'+stamp+'.bak')
+                shutil.copy2(original,backup)
+            old=service.state
+            service.state=candidate
+            try:
+                service.save()
+            except Exception:
+                service.state=old
+                raise
+            return {'company':candidate.player_company.name,
+                    'tier':request.tier,
+                    'roster_size':len(request.men)+len(request.women)}
+        except ValueError as exc:
+            raise HTTPException(status_code=400,detail=str(exc)) from exc
+
+
 @app.get('/ui/state')
 def ui_state():
     with service.lock:
         state = service.state
         bootstrap_world(state)
         return {
+            'setup_eligible': __import__('wrestling_sim.company_creation',fromlist=['is_eligible_for_company_creation']).is_eligible_for_company_creation(state),
             'year': state.year, 'week': state.week,
             'company': {**asdict(state.player_company), 'prestige': __import__('wrestling_sim.industry',fromlist=['company_prestige']).company_prestige(state,state.player_company_id)},
             'company_prestige': {cid:__import__('wrestling_sim.industry',fromlist=['company_prestige']).company_prestige(state,cid) for cid in state.companies},
