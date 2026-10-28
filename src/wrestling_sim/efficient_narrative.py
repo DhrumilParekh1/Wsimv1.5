@@ -89,7 +89,7 @@ def auto_show_fast(state, show_id: str, progress=None):
                 normalized=' '.join(clean.casefold().split())
                 if normalized in seen:
                     continue
-                if _only_segment_people(clean,match,state) and consistent_ai_reaction(clean,analysis):
+                if match and _only_segment_people(clean,match,state) and consistent_ai_reaction(clean,analysis):
                     seen.add(normalized)
                     post['text']=clean;post['source']='ollama';changed+=1
         return changed
@@ -110,6 +110,7 @@ def auto_show_fast(state, show_id: str, progress=None):
                     'personality':{state.wrestlers[w].name:state.wrestlers[w].personality for w in seg['participants']},
                     'alignment':{state.wrestlers[w].name:state.wrestlers[w].role for w in seg['participants']},
                     'direction':next((card.creative_direction for card in show.segments if card.title==seg['title']),'advance'),
+                    'promo_topic':next((card.promo_topic for card in show.segments if card.title==seg['title']),None),
                     'audience':seg.get('audience',{})})
             schema={'type':'object','properties':{
                  'commentary':{'type':'array','minItems':len(batch),'maxItems':len(batch),
@@ -157,7 +158,8 @@ def auto_show_fast(state, show_id: str, progress=None):
                     'history':[m['description'] for m in relevant_memories(state,seg['participants'],limit=3)],
                     'storyline':story.title if story else 'None',
                     'verdict':(seg.get('analysis') or analyze_segment(seg))['verdict'],
-                    'fixed_outcome':seg['narrative']})
+                    'fixed_outcome':seg['narrative'],
+                    'promo_topic':next((card.promo_topic for card in show.segments if card.title==seg['title']),None)})
             schema={'type':'object','properties':{'scenes':{'type':'array','minItems':len(batch),'maxItems':len(batch),
                 'items':{'type':'string','minLength':40,'maxLength':700}}},
                 'required':['scenes'],'additionalProperties':False}
@@ -165,7 +167,8 @@ def auto_show_fast(state, show_id: str, progress=None):
                 'Use actual performer names as dialogue speaker labels (Name: dialogue). Make their lines distinct based on '
                 'the supplied traits, alignments, personalities and previous history. Follow the fixed story beats. '
                 'Do NOT invent new wrestlers, match winners, injuries, turns, betrayals, signed contracts, title changes or promises. '
-                'Never add outcomes beyond the fixed facts; leave the storyline unresolved unless stated. '
+                'Never add outcomes beyond the fixed facts; leave the storyline unresolved unless stated. ' 
+                'A segment with storyline None is NOT part of an ongoing rivalry. Respect the supplied promo topic. '
                 'Write 2-4 meaningful short lines per scene, newline-separated in each string.', 'segments':facts},schema)
             lines=obj.get('scenes')
             if not isinstance(lines,list) or len(lines)!=len(batch):
