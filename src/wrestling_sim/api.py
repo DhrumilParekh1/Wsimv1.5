@@ -472,11 +472,32 @@ def ui_setup_company(request: CompanySetupRequest):
             raise HTTPException(status_code=400,detail=str(exc)) from exc
 
 
+def _portrait_data(state):
+    """Match source verified identities; do not infer a portrait from a name alone."""
+    from .real_photos import lookup_photos
+    from .real_data import DEFAULT_DB
+    path=os.getenv('RINGSIDE_REAL_DATA_DB',str(DEFAULT_DB))
+    try:
+        by_id=lookup_photos(path)
+    except (OSError,ValueError):
+        return {}
+    linked={}
+    for item in state.activity_log:
+        if item.get('type')=='real_roster_provenance' and item.get('wikidata_id'):
+            linked[item['wrestler_id']]=item['wikidata_id']
+    result={}
+    for wid in state.wrestlers:
+        qid=linked.get(wid) or (wid[3:] if wid.startswith('wd_Q') else None)
+        if qid in by_id:result[wid]=by_id[qid]
+    return result
+
+
 @app.get('/ui/state')
 def ui_state():
     with service.lock:
         state = service.state
         bootstrap_world(state)
+        portraits=_portrait_data(state)
         return {
             'setup_eligible': __import__('wrestling_sim.company_creation',fromlist=['is_eligible_for_company_creation']).is_eligible_for_company_creation(state),
             'year': state.year, 'week': state.week,
@@ -489,7 +510,7 @@ def ui_state():
             'transfer_offers': [o for o in state.transfer_offers if o.get('status')=='pending'],
             'expansion': {kind:__import__('wrestling_sim.industry',fromlist=['expansion_quote']).expansion_quote(state,kind) for kind in ('extra_ppv','more_hours')},
             'companies': [asdict(c) for c in state.companies.values()],
-            'wrestlers': [{**asdict(w), 'ratings': {**rating_breakdown(w), 'market_dollars':__import__('wrestling_sim.front_office',fromlist=['monetary_value']).monetary_value(w,state)}}
+            'wrestlers': [{**asdict(w), **portraits.get(w.id,{}), 'ratings': {**rating_breakdown(w), 'market_dollars':__import__('wrestling_sim.front_office',fromlist=['monetary_value']).monetary_value(w,state)}}
                           for w in state.wrestlers.values()],
             'storylines': [asdict(s) for s in state.storylines.values()],
             'championships': list(__import__('wrestling_sim.championships',fromlist=['ensure_championships']).ensure_championships(state).values()),
