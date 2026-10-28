@@ -261,7 +261,8 @@ PRESS_TOPIC_CHOICES = {
 
 def contextual_press_options(topic,name,rival):
     labels=PRESS_TOPIC_CHOICES.get(topic,PRESS_TOPIC_CHOICES['future'])
-    return [{**item,'label':labels[i].format(name=name,rival=rival)} for i,item in enumerate(PRESS_CHOICES)]
+    return [{**item,'label':(labels[i].format(name=name,rival=rival) if i<len(labels) else item['label'])}
+            for i,item in enumerate(PRESS_CHOICES)]
 
 
 def conference(state):
