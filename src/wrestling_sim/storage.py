@@ -121,8 +121,14 @@ def restore_game(data: dict) -> GameState:
         restored.companies.setdefault(company_id, blueprint.companies[company_id])
     new_ids = {'sora','mizuki','arden','lyra','pike','talia','thorn','aria',
                'eden','solis','hart','blaze','finn'}
-    for wrestler_id in new_ids:
-        restored.wrestlers.setdefault(wrestler_id, blueprint.wrestlers[wrestler_id])
+    is_real_universe = any(
+        item.get('type') == 'real_roster_provenance'
+        for item in data.get('activity_log', [])
+    )
+    if not is_real_universe:
+        # Historical fictional saves still need their legacy starter additions.
+        for wrestler_id in new_ids:
+            restored.wrestlers.setdefault(wrestler_id, blueprint.wrestlers[wrestler_id])
     bootstrap_world(restored)
     from .championships import ensure_championships
     ensure_championships(restored)
