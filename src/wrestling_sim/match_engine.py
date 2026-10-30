@@ -68,8 +68,9 @@ def match_profile(state: GameState, segment: Segment, story) -> dict:
     stamina_readiness = clamp(100 - max(0, workload - 10) * 1.12 + (stamina - 75) * .22 - exhaustion * .68)
     if segment.planned_winner_id:
         winner = state.wrestlers[segment.planned_winner_id]
-        loser = next(w for w in wrestlers if w.id != winner.id)
-        credibility = clamp(76 + (winner.attributes['momentum'] - loser.attributes['momentum']) * 1.4
+        competitors=[w for w in wrestlers if w.id != winner.id]
+        opposition=mean(w.attributes['momentum'] for w in competitors)
+        credibility = clamp(76 + (winner.attributes['momentum'] - opposition) * 1.4
                             + ((story.hype - 50) * .16 if story else 0))
     else:
         credibility = 72.0
@@ -80,8 +81,8 @@ def match_profile(state: GameState, segment: Segment, story) -> dict:
     tier={'jobber':0,'lower_mid_card':1,'mid_card':2,'upper_mid_card':3,'main_event':4}
     loser_protection=0
     if segment.planned_winner_id:
-        l=next(w for w in wrestlers if w.id!=segment.planned_winner_id)
-        loser_protection=tier[l.card_tier]
+        other=[w for w in wrestlers if w.id!=segment.planned_winner_id]
+        loser_protection=max(tier[w.card_tier] for w in other)
     # The match's technical quality and its ending satisfaction are separate.
     satisfaction=credibility*.40+psychology*.24+style_fit*.20+stamina_readiness*.16
     satisfaction+= {'clean':6,'flash_pin':-1,'interference':-5,'disqualification':-15,'time_limit_draw':-9}[segment.finish_type]
@@ -146,6 +147,12 @@ for _style, _weights in STYLE_WEIGHTS.items():
 
 def generate_highlights(state: GameState, segment: Segment, rng: random.Random) -> list[dict]:
     """Chronological fictional beats, drawing moves ONLY from an actor's assigned moveset."""
+    if segment.match_format=="battle_royale":
+        from .battle_royale import royale_highlights
+        return royale_highlights(state,segment,rng)["highlights"]
+    if segment.match_format!="singles":
+        from .multi_match_engine import multi_highlights
+        return multi_highlights(state,segment,rng)["highlights"]
     a,b=(state.wrestlers[x] for x in segment.wrestler_ids)
     styles=set(segment.match_styles or [segment.match_style])
     count=min(9,max(3,segment.duration//3))
