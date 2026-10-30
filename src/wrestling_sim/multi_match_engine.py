@@ -50,11 +50,19 @@ def multi_highlights(state,segment,rng:random.Random):
         act=rng.choices(["exchange","counter","double_team","pin_break","recovery"],
                         weights=[40,22,14,14,10],k=1)[0]
         if act=="double_team":
-            ally=rng.choice([w for w in other if w.id!=defender.id])
+            allies=[w for w in other if w.id!=defender.id]
+            # Existing interpersonal chemistry and alignment affect a temporary
+            # alliance, but do not guarantee cooperation or success.
+            def alliance_fit(ally):
+                bond=(attacker.relationships.get(ally.id,0)+ally.relationships.get(attacker.id,0))/50
+                alignment=.18 if attacker.role==ally.role else -.08
+                return max(.05,.45+bond*.45+alignment+ally.attributes["character_work"]*.012)
+            ally=allies[_pick(rng,[alliance_fit(w) for w in allies])]
             attack=(.33*attacker.attributes["sequences"]+.24*attacker.attributes["moves"]+
                     .20*ally.attributes["character_work"]+.23*ally.attributes["technique"])/25
             defence=(defender.attributes["selling"]+defender.attributes["agility"])/50
-            chance=clamp(.38+.38*(attack-defence)+.10*stamina[attacker.id]/100,.10,.88)
+            chance=clamp(.38+.38*(attack-defence)+.10*stamina[attacker.id]/100+
+                         .12*(alliance_fit(ally)-.5),.10,.88)
             success=rng.random()<chance
             text=(f"{attacker.name} and {ally.name} coordinate against {defender.name}." if success else
                   f"{defender.name} anticipates a double-team from {attacker.name} and {ally.name}.")
