@@ -3,7 +3,7 @@
 const app = document.getElementById('app');
 const NAV = [
  ['dashboard','Dashboard','home'],['booker','Show Booker','calendar'],['roster','My Roster','users'],
- ['stories','Storylines','flame'],['press','Press Conferences','users'],['titles','Championships','star'],['creative','Creative Room','star'],['staff','Creative Staff','users'],['scouts','Scouting','briefcase'],['coaches','Coaching','users'],['market','Talent Market','briefcase'],['calendar','Calendar & PPVs','calendar'],['news','World News','flame'],['social','Fan Social','users'],['sponsors','Sponsorships','wallet'],['finances','Finances','chart'],
+ ['stories','Storylines','flame'],['press','Press Conferences','users'],['titles','Championships','star'],['tournaments','Tournaments','star'],['creative','Creative Room','star'],['staff','Creative Staff','users'],['scouts','Scouting','briefcase'],['coaches','Coaching','users'],['market','Talent Market','briefcase'],['calendar','Calendar & PPVs','calendar'],['news','World News','flame'],['social','Fan Social','users'],['sponsors','Sponsorships','wallet'],['finances','Finances','chart'],
 ];
 const GLYPHS={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/>',users:'<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M17 14c3 0 4 2 4 5"/>',flame:'<path d="M12 22a8 8 0 0 0 8-8c0-4-3-7-5-9 0 4-2 5-3 6-1-2-1-5-2-8C6 7 4 11 4 14a8 8 0 0 0 8 8z"/>',briefcase:'<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12c4 3 14 3 18 0"/>',chart:'<path d="M4 20h16M7 16V8M12 16V4M17 16v-5"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/>',arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',plus:'<path d="M12 4v16M4 12h16"/>',chevron:'<path d="m8 5 7 7-7 7"/>',star:'<path d="m12 3 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>',wallet:'<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 14h2"/>',next:'<path d="m5 4 10 8-10 8V4zM19 4v16"/>'};
 const ico=n=>`<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${GLYPHS[n]||GLYPHS.star}</svg>`;
@@ -34,6 +34,34 @@ const chemWith=id=>Object.entries(model.data.chemistry||{}).filter(([key])=>key.
 const tierControl=w=>`<select class="select card-tier-select" aria-label="Card position for ${safe(w.name)}" data-card-tier="${safe(w.id)}">${cardTiers.map(t=>`<option value="${t}" ${w.card_tier===t?'selected':''}>${tierName(t)}</option>`).join('')}</select>`;
 function titlesView(){let belts=model.data.championships||[];return `${heading('CHAMPIONSHIP OFFICE','Championships','World and intercontinental championships have their own lineage, prestige, and commercial draw.')}
  <div class="contract-list">${belts.map(b=>`<section class="card"><div class="eyebrow">${safe(b.division.toUpperCase())} · PRESTIGE ${n1(b.prestige)}</div><h3>${safe(b.name)}</h3><p>${b.holder_id?`${img(b.holder_id,'sm')} <strong>${safe(who(b.holder_id)?.name||b.holder_id)}</strong>`:'Vacant championship'}</p><p class="micro">Successful defenses: ${b.defenses} · Recorded reign events: ${(b.lineage||[]).length}</p><div class="timeline">${(b.lineage||[]).slice(-4).reverse().map(l=>`<div class="timeline-item">Week ${l.week} · ${safe(who(l.winner_id)?.name||l.winner_id)} ${l.change?'won':'retained'} ${safe(b.name)}</div>`).join('')}</div></section>`).join('')}</div>`;}
+function tournamentsView(){
+ const belts=(model.data.championships||[]), tournaments=model.data.tournaments||[],
+       fixtures=model.data.tournament_matches||[];
+ const divisionOptions=b=>roster().filter(w=>w.division===b.division);
+ return heading('CHAMPIONSHIP OFFICE','Tournaments & Inaugural Champions',
+  'Crown vacant champions through four/eight-person brackets, Triple Threats, Fatal Four-Ways or Battle Royales. The booked winner is fixed; simulation decides match quality.')+
+ '<div class="stack">'+belts.map(b=>{
+ const ongoing=tournaments.find(t=>t.belt_id===b.id&&t.status==='active');
+ return '<section class="card"><h3>'+safe(b.name)+'</h3><p class="micro">'+(b.holder_id?'Champion: '+safe(who(b.holder_id)?.name||b.holder_id):'Vacant championship')+'</p>'+
+ (b.holder_id?'<p>Already crowned. Inaugural competitions only apply to vacant championships.</p>':
+ ongoing?'<p class="pill">Active competition: '+safe(ongoing.name)+'</p>':
+ '<form data-tournament-form="'+safe(b.id)+'"><div class="field"><label>Competition method</label><select class="select" name="method">'+
+ [['single_elimination','4 or 8-person elimination bracket'],['triple_threat','Triple Threat title match'],
+  ['fatal_four_way','Fatal Four-Way title match'],['battle_royale','Battle Royale']].map(([value,label])=>'<option value="'+value+'">'+label+'</option>').join('')+
+ '</select></div><div class="field"><label>Name (optional)</label><input class="input" name="name" placeholder="Inaugural championship"></div>'+
+ '<p class="micro">Select 4 or 8 wrestlers for a bracket; exactly 3 or 4 for multi-person title matches; 4–20 for a Battle Royale.</p>'+
+ '<div class="form-grid">'+divisionOptions(b).map(w=>'<label class="check"><input type="checkbox" name="entrant" value="'+safe(w.id)+'"> '+safe(w.name)+'</label>').join('')+'</div>'+
+ '<button class="btn btn-coral" type="submit">Create championship competition</button></form>')+'</section>';
+ }).join('')+
+ tournaments.map(t=>'<section class="card"><h3>'+safe(t.name)+'</h3><p class="micro">'+safe(t.method.replaceAll('_',' '))+
+ ' · '+safe(t.status)+ (t.winner_id?' · Champion: '+safe(who(t.winner_id)?.name||t.winner_id):'')+'</p>'+
+ t.rounds.map((round,i)=>'<div class="stack"><strong>Round '+(i+1)+'</strong>'+
+ round.map(m=>'<div class="task-row">'+safe(m.participants.map(id=>who(id)?.name||'Awaiting winner').join(' vs ')||'Awaiting previous round')+
+ ' · '+safe(m.status)+(m.winner_id?' · Winner: '+safe(who(m.winner_id)?.name||m.winner_id):'')+
+ (m.status==='ready'?'<button class="btn btn-outline btn-small" data-tournament-fixture="'+safe(t.id)+'" data-match-id="'+safe(m.id)+'">Prepare match in Booker</button>':'')+'</div>').join('')+'</div>').join('')+
+ '</section>').join('')+'</div>';
+}
+
 const storyTag=id=>linkedStories(id).length?linkedStories(id).map(s=>`<span class="story-link" data-nav="stories">${safe(s.title)}</span>`).join(''):'<span class="micro">No active storyline</span>';
 const selectStory=()=>`<option value="">No storyline</option>${model.data.storylines.filter(s=>s.stage!=='resolved').map(s=>`<option value="${safe(s.id)}">[${safe(who(s.wrestler_ids[0])?.division||'?')}] ${safe(s.title)}</option>`).join('')}`;
 const model={narrationStatus:null,loading:false,view:'dashboard',data:null,modal:null,draft:[],search:'',filter:'all',division:'all',busy:false,lastResult:null,liveIndex:0,highlightIndex:0,prefill:null,room:null,previousView:'roster',setupDismissed:false,companyTier:'startup',companyName:'My Wrestling Promotion'};
@@ -88,8 +116,15 @@ function booking(){
  ${show?`<h2>${safe(show.name)}</h2>${segmentList(show.segments,false)}<button class="btn btn-coral btn-wide" data-simulate="${safe(show.id)}">▶ Simulate show and watch highlights</button>`:
  `<form id="segment-form" class="form-grid"><div class="field full"><label>Match / promo / segment name (required)</label><input class="input" name="title" placeholder="e.g. Phoenix Challenges Steel" value="${safe(p.title||'')}" required></div>
  <div class="field"><label>Segment category</label><select class="select" name="kind" id="segment-kind"><optgroup label="MATCH">${kinds.slice(0,1).map(k=>`<option value="${k[0]}" ${selectedKind===k[0]?'selected':''}>${k[1]}</option>`).join('')}</optgroup><optgroup label="PROMOS & BACKSTAGE">${kinds.slice(1,6).map(k=>`<option value="${k[0]}" ${selectedKind===k[0]?'selected':''}>${k[1]}</option>`).join('')}</optgroup><optgroup label="OTHER ANGLES">${kinds.slice(6).map(k=>`<option value="${k[0]}" ${selectedKind===k[0]?'selected':''}>${k[1]}</option>`).join('')}</optgroup></select></div>
+ <div class="field match-config ${selectedKind!=='match'?'hidden':''}"><label>Match format</label><select class="select" name="match_format" id="segment-match-format">${[['singles','Singles (2 wrestlers)'],['triple_threat','Triple Threat (3)'],['fatal_four_way','Fatal Four-Way (4)'],['battle_royale','Battle Royale (4–20)']].map(([v,l])=>`<option value="${v}" ${(p.match_format||'singles')===v?'selected':''}>${l}</option>`).join('')}</select></div>
+ <input type="hidden" name="tournament_id" value="${safe(p.tournament_id||'')}"><input type="hidden" name="tournament_match_id" value="${safe(p.tournament_match_id||'')}">
+ ${p.tournament_id?`<div class="field full"><strong>Bracket fixture: ${safe(p.tournament_name||p.tournament_id)}</strong><p class="micro">Book the specified entrants and choose the planned winner. The title is automatically awarded after the final.</p></div>`:''}
  <div class="field"><label>Duration (minutes)</label><input class="input" name="duration" type="number" min="1" max="60" value="${p.duration||12}" required></div>
  <div class="field"><label>Performer 1</label><select class="select" name="first" required>${optionList(r,p.wrestler_ids?.[0]||'')}</select></div><div class="field"><label id="second-performer-label">Performer 2 (required for matches)</label><select class="select" name="second">${optionList(r.filter(w=>!p.wrestler_ids?.[0]||w.division===who(p.wrestler_ids[0])?.division),p.wrestler_ids?.[1]||'')}</select></div>
+ <div class="field match-config multi-third ${selectedKind!=='match'?'hidden':''}"><label>Performer 3 (Triple Threat / Fatal Four-Way)</label><select name="third" class="select">${optionList(r,p.wrestler_ids?.[2]||'','Choose third wrestler')}</select></div>
+ <div class="field match-config multi-fourth ${selectedKind!=='match'?'hidden':''}"><label>Performer 4 (Fatal Four-Way)</label><select name="fourth" class="select">${optionList(r,p.wrestler_ids?.[3]||'','Choose fourth wrestler')}</select></div>
+ <div class="field match-config battle-entrants ${selectedKind!=='match'?'hidden':''} full"><label>Additional Battle Royale entrants (Ctrl/Command to select multiple)</label><select multiple size="7" name="battle_entrant" class="select">${r.filter(w=>!p.wrestler_ids?.slice(0,2).includes(w.id)).map(w=>`<option value="${safe(w.id)}" ${(p.wrestler_ids||[]).slice(2).includes(w.id)?'selected':''}>${safe(w.name)}</option>`).join('')}</select><small>Choose between 4 and 20 entrants overall. Performer 1 and 2 are included.</small></div>
+ <div class="field match-config battle-featured ${selectedKind!=='match'?'hidden':''} full"><label>Optional featured late eliminations</label><select multiple name="featured_elimination" size="5" class="select"></select><small>Optional: highlight selected wrestlers near the final stretch. The last survivor is always the booked winner.</small></div>
  <div class="field"><label>Active storyline</label><select class="select" name="storyline_id" id="segment-storyline">${selectStory().replace(`value="${safe(p.storyline_id||'')}"`,`value="${safe(p.storyline_id||'')}" selected`)}</select></div><div class="field" id="storyline-direction-config"><label>Storyline creative direction</label><select name="creative_direction" class="select">${[["advance","Advance"],["slow_burn","Slow burn"],["escalate","Escalate"],["swerve","Twist"],["resolve","Resolve"]].map(([v,l])=>`<option value="${v}" ${p.creative_direction===v?"selected":""}>${l}</option>`).join("")}</select><small>Direction affects hype, story coherence, fan trust and the expectations of the audience. Repeated escalation and premature resolution can backfire.</small></div>
  <div class="field full promo-config ${selectedKind==='match'?'hidden':''}" id="promo-topic-config"><label>Solo promo purpose</label><select name="promo_topic" class="select"><option value="self_hype">Hype themselves up</option><option value="ambitions">Discuss personal ambitions</option><option value="address_fans">Address the audience</option><option value="callout">Call out a potential opponent</option></select><small>Additional options appear for champions and recent wins or losses.</small></div>
  <div class="field match-config ${selectedKind!=='match'?'hidden':''}"><label>Primary style (65% with two / 55% with three)</label><select name="match_style" class="select">${['balanced','technical','high_flying','power','brawl','storytelling'].map(k=>`<option value="${k}">${safe(k.replaceAll('_',' '))}</option>`).join('')}</select></div>
@@ -205,7 +240,7 @@ function companySetupView(){
   '</form><button class="btn btn-ghost" data-skip-company-setup="1">Continue existing WWE test campaign instead</button></section>';
 }
 
-function render(){if(!model.data)return;if(model.data.setup_eligible&&!model.setupDismissed){app.innerHTML=companySetupView();return;}const views={dashboard,booker:booking,roster:rosterView,stories:storiesView,press:pressView,titles:titlesView,creative:creativeView,staff:staffView,scouts:scoutsView,coaches:coachesView,market,calendar:calendarView,news:worldNewsView,social:socialView,sponsors:sponsorsView,finances};if(model.room){app.innerHTML=roomView();return;}app.innerHTML=`<div class="shell">${navHtml()}<div class="content">${header()}<main class="main-content">${views[model.view]()}</main></div></div>${mobileNav()}${modalHtml()}${model.loading?`<div class="simulation-loading" role="status" aria-live="polite"><div class="loading-dialog"><div class="loading-spinner"></div><div class="eyebrow">RINGSIDE · PRODUCTION CONTROL</div><h2>Simulating your show</h2><p>Calculating individual performances, audience responses, injuries, and finances. Numerical results will be saved before Ollama commentary starts.</p></div></div>`:''}`;const form=document.querySelector('#segment-form');if(form)syncBookingEligibility(form);}
+function render(){if(!model.data)return;if(model.data.setup_eligible&&!model.setupDismissed){app.innerHTML=companySetupView();return;}const views={dashboard,booker:booking,roster:rosterView,stories:storiesView,press:pressView,titles:titlesView,tournaments:tournamentsView,creative:creativeView,staff:staffView,scouts:scoutsView,coaches:coachesView,market,calendar:calendarView,news:worldNewsView,social:socialView,sponsors:sponsorsView,finances};if(model.room){app.innerHTML=roomView();return;}app.innerHTML=`<div class="shell">${navHtml()}<div class="content">${header()}<main class="main-content">${views[model.view]()}</main></div></div>${mobileNav()}${modalHtml()}${model.loading?`<div class="simulation-loading" role="status" aria-live="polite"><div class="loading-dialog"><div class="loading-spinner"></div><div class="eyebrow">RINGSIDE · PRODUCTION CONTROL</div><h2>Simulating your show</h2><p>Calculating individual performances, audience responses, injuries, and finances. Numerical results will be saved before Ollama commentary starts.</p></div></div>`:''}`;const form=document.querySelector('#segment-form');if(form)syncBookingEligibility(form);}
 async function watchNarration(showId){
   for(let tries=0;tries<48;tries++){
     await new Promise(resolve=>setTimeout(resolve,2500));
@@ -219,7 +254,14 @@ async function watchNarration(showId){
 function changeView(view){if(NAV.some(([id])=>id===view)){model.view=view;model.modal=null;render();window.scrollTo({top:0,behavior:'instant'});}}
 function addSegmentObject(seg){
  const ids=seg.wrestler_ids; if(!ids.length)throw Error('Select a performer.');
- if(seg.kind==='match'&&ids.length!==2)throw Error('Singles matches need two performers.');
+ if(seg.kind==='match'){
+  const boundaries={singles:[2,2],triple_threat:[3,3],fatal_four_way:[4,4],battle_royale:[4,20]};
+  const bounds=boundaries[seg.match_format||'singles'];
+  if(!bounds||ids.length<bounds[0]||ids.length>bounds[1])
+    throw Error('Selected match format requires '+(bounds?bounds.join('–'):'valid')+' performers.');
+  if(seg.match_format==='battle_royale'&&seg.finish_type!=='clean')
+    throw Error('Battle Royales must finish with the final survivor.');
+}
  if(new Set(ids).size!==ids.length)throw Error('Performers must be different.');
  if(ids.some(id=>!roster().some(w=>w.id===id)))throw Error('A selected wrestler is not on your roster.');
  if(new Set(ids.map(id=>who(id).division)).size>1)throw Error('Men’s and women’s divisions cannot be combined in one segment.');
@@ -234,7 +276,7 @@ function addSegmentObject(seg){
   if(seg.stipulation==='no_disqualification'&&seg.finish_type==='disqualification')throw Error('No-DQ cannot finish by DQ.');
   if(seg.stipulation==='submission'&&['flash_pin','disqualification'].includes(seg.finish_type))throw Error('Submission matches cannot use that finish.');
   if(seg.stipulation==='ironman'&&seg.finish_type==='time_limit_draw')throw Error('Ironman needs a different finish.');
-  if(seg.championship_id){const belt=(model.data.championships||[]).find(b=>b.id===seg.championship_id);if(!belt||ids.some(id=>who(id).division!==belt.division)||belt.holder_id&&!ids.includes(belt.holder_id))throw Error('Title defense must feature the reigning champion and correct division.');if(!seg.planned_winner_id)throw Error('Select a winner for a title match.');}
+  if(seg.championship_id){const belt=(model.data.championships||[]).find(b=>b.id===seg.championship_id);if(!belt||ids.some(id=>who(id).division!==belt.division)||!belt.holder_id||!ids.includes(belt.holder_id))throw Error('Title defense must feature the reigning champion and correct division.');if(!seg.planned_winner_id)throw Error('Select a winner for a title match.');}
   if(model.draft.some(x=>x.kind==='match'&&ids.some(id=>x.wrestler_ids.includes(id))))throw Error('One match per wrestler per show.');
  }
  if(!seg.title.trim()||seg.duration<1||seg.duration>60)throw Error('Title and valid duration required.');
@@ -262,10 +304,41 @@ function syncBookingEligibility(form){
  if(secondInput)secondInput.required=mandatory;
  const label=form.querySelector('#second-performer-label');
  if(label)label.textContent=mandatory?'Performer 2 (required)':kind==='promo'?'Interrupting wrestler (optional)':'Performer 2 (optional)';
+ const format=kind==='match'?(form.elements.namedItem('match_format')?.value||'singles'):'singles';
+ for(const [selector,visible] of [
+   ['.multi-third',kind==='match'&&['triple_threat','fatal_four_way'].includes(format)],
+   ['.multi-fourth',kind==='match'&&format==='fatal_four_way'],
+   ['.battle-entrants',kind==='match'&&format==='battle_royale'],
+   ['.battle-featured',kind==='match'&&format==='battle_royale']
+ ]){
+   form.querySelectorAll(selector).forEach(el=>el.classList.toggle('hidden',!visible));
+ }
+ for(const field of ['third','fourth']){
+  const select=form.elements.namedItem(field);
+  if(select)select.required=field==='third'?['triple_threat','fatal_four_way'].includes(format):format==='fatal_four_way';
+ }
+ const finish=form.elements.namedItem('finish_type');
+ if(finish&&format==='battle_royale'){finish.value='clean';}
+ if(finish)for(const option of finish.options){
+  option.disabled=format!=='singles'&&!['clean','flash_pin','interference'].includes(option.value)||
+                  format==='battle_royale'&&option.value!=='clean';
+ }
+ const involved=selectedMatchParticipants(form);
+ const winner=form.elements.namedItem('planned_winner_id');
+ if(winner){
+  const old=winner.value;
+  winner.innerHTML=optionList(involved.map(who).filter(Boolean),old,'Choose booked winner');
+ }
+ const featured=form.elements.namedItem('featured_elimination');
+ if(featured){
+  const old=[...featured.selectedOptions].map(o=>o.value);
+  const winnerValue=form.elements.namedItem('planned_winner_id')?.value;
+  featured.innerHTML=involved.filter(id=>id!==winnerValue).map(id=>'<option value="'+safe(id)+'" '+(old.includes(id)?'selected':'')+'>'+safe(who(id)?.name||id)+'</option>').join('');
+ }
  const title=form.elements.namedItem('championship_id');
  if(title){
-  const ids=[first,second].filter(Boolean);
-  const eligible=(model.data.championships||[]).filter(b=>ids.length===2&&ids.includes(b.holder_id)&&ids.every(id=>who(id)?.division===b.division));
+  const ids=selectedMatchParticipants(form);
+  const eligible=(model.data.championships||[]).filter(b=>ids.length>=2&&ids.includes(b.holder_id)&&ids.every(id=>who(id)?.division===b.division));
   const selected=title.value;
   title.innerHTML='<option value="">Non-title match</option>'+eligible.map(b=>`<option value="${safe(b.id)}">${safe(b.name)}</option>`).join('');
   title.value=eligible.some(b=>b.id===selected)?selected:'';
@@ -298,10 +371,13 @@ function syncBookingEligibility(form){
 }
 function addSegment(form){
  syncBookingEligibility(form);
- const f=new FormData(form),kind=f.get('kind'),first=f.get('first'),second=f.get('second'),ids=[first,second].filter(Boolean);
+ const f=new FormData(form),kind=f.get('kind'),first=f.get('first'),second=f.get('second'),
+  format=kind==='match'?(f.get('match_format')||'singles'):'singles',
+  ids=selectedMatchParticipants(form);
  if(['match','confrontation'].includes(kind)&&!second)throw Error('Select two different performers for this segment.');
  addSegmentObject({kind,title:String(f.get('title')).trim(),duration:Number(f.get('duration')),
-  wrestler_ids:ids,storyline_id:f.get('storyline_id')||null,promotion_budget:Number(f.get('promotion_budget')||0),
+  wrestler_ids:ids,match_format:format,featured_eliminations:format==='battle_royale'?f.getAll('featured_elimination'):[],tournament_id:f.get('tournament_id')||null,
+  tournament_match_id:f.get('tournament_match_id')||null,storyline_id:f.get('storyline_id')||null,promotion_budget:Number(f.get('promotion_budget')||0),
   planned_winner_id:kind==='match'?(f.get('planned_winner_id')||null):null,
   championship_id:kind==='match'?(f.get('championship_id')||null):null,
   promo_topic:kind==='promo'&&!f.get('storyline_id')?f.get('promo_topic')||'self_hype':null,
@@ -335,6 +411,17 @@ app.addEventListener('click',async e=>{
  const skipSetup=e.target.closest('[data-skip-company-setup]');if(skipSetup){model.setupDismissed=true;render();return;}
  const reopenSetup=e.target.closest('[data-open-company-setup]');if(reopenSetup){model.setupDismissed=false;render();return;}
 const pressNotice=e.target.closest('[data-press-reminder]');if(pressNotice){model.view='press';model.modal=null;render();return;}
+ const fixtureButton=e.target.closest('[data-tournament-fixture]');
+ if(fixtureButton){
+  const tour=(model.data.tournaments||[]).find(t=>t.id===fixtureButton.dataset.tournamentFixture);
+  const fixture=tour?.rounds.flat().find(m=>m.id===fixtureButton.dataset.matchId);
+  if(!tour||!fixture||fixture.status!=='ready'){notify('Fixture no longer available',true);return;}
+  model.prefill={kind:'match',title:tour.name+' — '+fixture.participants.map(id=>who(id)?.name||id).join(' vs '),
+     duration:Math.min(25,model.data.company.show_minutes),
+     wrestler_ids:fixture.participants,match_format:fixture.match_format,
+     tournament_id:tour.id,tournament_match_id:fixture.id,tournament_name:tour.name};
+  model.view='booker';render();notify('Tournament fixture loaded into Show Booker. Choose the booked winner.');return;
+ }
  const press=e.target.closest('[data-press]');if(press){await run(()=>request('/ui/press/answer','POST',{question_id:press.dataset.press,choice:press.dataset.pressChoice}),'Press response published.');return;}
  const bid=e.target.closest('[data-rival-offer]');if(bid){await run(()=>request('/ui/recruit/rival-offer','POST',{offer_id:bid.dataset.rivalOffer,decision:bid.dataset.bidAction}),'Rival contract offer processed.');return;}
  const acknowledge=e.target.closest('[data-ack-recruit]');if(acknowledge){await run(()=>request('/ui/recruit/acknowledge','POST',{key:acknowledge.dataset.ackRecruit}),'Recruitment report reviewed.');return;}
@@ -373,6 +460,13 @@ const pressNotice=e.target.closest('[data-press-reminder]');if(pressNotice){mode
   if(result){model.narrationStatus=result.narrative_generation;model.liveIndex=0;model.highlightIndex=0;model.modal={type:'live',id};render();watchNarration(id);}else render();
   return;}const action=e.target.closest('[data-action]');if(action?.dataset.action==='advance'){if((model.data.inbox_blockers||[]).length){model.view='dashboard';model.modal=null;render();notify(`Resolve ${(model.data.inbox_blockers||[]).length} inbox item(s) before advancing.`,true);return;}const confirmed=activeShow()?window.confirm('Your current show must be simulated before advancing. Continue?'):true;if(confirmed){const r=await run(()=>request('/weeks/advance','POST'),'A new week begins.');if(r){model.view='dashboard';render();}}}if(action?.dataset.action==='reset'){if(window.confirm('This will permanently replace the current campaign save with a new game. Start again?')){const result=await run(()=>request('/game/new','POST',{seed:2026}),'Started a fresh 2026 campaign.');if(result){model.draft=[];model.modal=null;model.view='dashboard';render();}}}});
 app.addEventListener('submit',async e=>{
+ if(e.target.matches('form[data-tournament-form]')){
+  e.preventDefault();const form=e.target,f=new FormData(form);
+  const data={belt_id:form.dataset.tournamentForm,entrant_ids:f.getAll('entrant'),
+              method:f.get('method'),name:String(f.get('name')||'').trim()||null};
+  await run(()=>request('/tournaments','POST',data),'Championship competition created.');
+  return;
+ }
  if(e.target.id==='setup-company-form'){
   e.preventDefault();const form=e.target,level=form.elements.namedItem('tier').value,
   n={indie:1,startup:2,juggernaut:3}[level];
@@ -388,18 +482,45 @@ if(form.id==='coach-form'){const f=new FormData(form);await run(()=>request('/ui
  if(form.id==='negotiation-form'){const f=new FormData(form);const btn=e.submitter;const action=btn?.value||'offer';const r=await run(()=>request('/ui/negotiations/choose','POST',{session_id:model.room.id,action,salary:Number(f.get('salary')),weeks:Number(f.get('weeks')),bonus:Number(f.get('bonus'))}),'Offer delivered.');if(r){model.room={type:'negotiation',...r};render();}return;}
  if(form.id==='segment-form'){try{addSegment(form);}catch(err){notify(err.message,true);}return;}if(form.id==='book-show-form'){const title=String(new FormData(form).get('show_name')).trim();const result=await run(()=>request('/shows/book','POST',{name:title,duration:model.data.company.show_minutes,segments:model.draft}),'Show booked. Ready to simulate!');if(result){model.draft=[];render();}return;}if(form.id==='media-form'){const id=new FormData(form).get('wrestler_id');const r=await run(()=>request('/ui/media/assign','POST',{wrestler_id:id}),'Media request processed.');if(r){model.modal={type:'choice',result:{headline:'Media request',narrative:r.narrative,week:model.data.week,effects:{energy:r.energy_delta}}};render();}return;}if(form.id==='story-form'){const f=new FormData(form);const ids=[f.get('first'),f.get('second')];if(ids[0]===ids[1])return notify('Select two different wrestlers.',true);if(who(ids[0])?.division!==who(ids[1])?.division)return notify('Choose wrestlers from the same division.',true);await run(()=>request('/storylines','POST',{title:f.get('title'),wrestler_ids:ids}),'A new storyline begins.');return;}if(form.id==='contract-form'){const f=new FormData(form);const payload={wrestler_id:f.get('wrestler_id'),salary_weekly:Number(f.get('salary_weekly')),weeks:Number(f.get('weeks')),signing_bonus:Number(f.get('signing_bonus')),promised_role:f.get('promised_role'),promises:f.getAll('promise')};const r=await run(()=>request('/contracts/offer','POST',payload),'Contract offer processed.');if(r){model.modal=null;render();notify(r.accepted?`${who(r.wrestler_id)?.name} accepted your offer!`:`Offer declined. Expected salary approximately ${fmtMoney(r.estimated_expected_salary)}/week.`,!r.accepted);}return;}});
 app.addEventListener('input',e=>{if(e.target.id==='roster-search'){model.search=e.target.value;const caret=e.target.selectionStart;render();const focus=document.querySelector('#roster-search');if(focus){focus.focus();focus.setSelectionRange(caret,caret);}}});
+function selectedMatchParticipants(form){
+ const kind=form.elements.namedItem('kind')?.value;
+ const format=kind==='match'?(form.elements.namedItem('match_format')?.value||'singles'):'singles';
+ const values=[form.elements.namedItem('first')?.value,form.elements.namedItem('second')?.value].filter(Boolean);
+ if(kind==='match'){
+  if(format==='triple_threat'||format==='fatal_four_way')values.push(form.elements.namedItem('third')?.value);
+  if(format==='fatal_four_way')values.push(form.elements.namedItem('fourth')?.value);
+  if(format==='battle_royale')values.push(...[...form.elements.namedItem('battle_entrant')?.selectedOptions||[]].map(o=>o.value));
+ }
+ return values.filter(Boolean);
+}
 function syncParticipantChoices(form){
- const first=who(form.elements.namedItem('first').value);
- const secondSelect=form.elements.namedItem('second');
- if(first){const previous=secondSelect.value;secondSelect.innerHTML=optionList(roster().filter(w=>w.division===first.division&&w.id!==first.id),previous,'Optional co-star');}
- const participants=[form.elements.namedItem('first').value,secondSelect.value].filter(Boolean).map(who).filter(Boolean);
- for(const field of ['planned_winner_id','role_turn_wrestler_id']){
-   const select=form.elements.namedItem(field);if(!select)continue;
-   const previous=select.value;select.innerHTML=optionList(participants,previous,field==='planned_winner_id'?'Choose the winner':'Choose the wrestler in this segment');
+ const first=who(form.elements.namedItem('first')?.value);
+ const division=first?.division;
+ for(const name of ['second','third','fourth']){
+  const select=form.elements.namedItem(name);if(!select)continue;
+  const current=select.value;
+  select.innerHTML=optionList(roster().filter(w=>!division||w.division===division).filter(w=>w.id!==first?.id),
+     current,name==='second'?'Choose second wrestler':'Additional performer');
+ }
+ const extra=form.elements.namedItem('battle_entrant');
+ if(extra){
+  const old=[...extra.selectedOptions].map(o=>o.value);
+  extra.innerHTML=roster().filter(w=>(!division||w.division===division)&&w.id!==first?.id)
+   .map(w=>'<option value="'+safe(w.id)+'" '+(old.includes(w.id)?'selected':'')+'>'+safe(w.name)+'</option>').join('');
+ }
+ const participants=selectedMatchParticipants(form).map(who).filter(Boolean);
+ for(const name of ['planned_winner_id','role_turn_wrestler_id']){
+  const select=form.elements.namedItem(name);if(!select)continue;
+  const previous=select.value;
+  select.innerHTML=optionList(participants,previous,
+     name==='planned_winner_id'?'Choose the booked winner':'Choose the wrestler in this segment');
  }
 }
+
 app.addEventListener('input',e=>{if(e.target.id==='setup-company-name')model.companyName=e.target.value;});
-app.addEventListener('change',e=>{if(e.target.id==='setup-tier'){model.companyTier=e.target.value;render();return;}if(['first','second'].includes(e.target.name)&&e.target.closest('#segment-form')){syncParticipantChoices(e.target.closest('#segment-form'));syncBookingEligibility(e.target.closest('#segment-form'));}
+app.addEventListener('change',e=>{if(e.target.id==='setup-tier'){model.companyTier=e.target.value;render();return;}if(e.target.id==='segment-match-format'&&e.target.closest('#segment-form')){
+  const form=e.target.closest('#segment-form');syncParticipantChoices(form);syncBookingEligibility(form);return;
+ }if(['first','second','third','fourth','battle_entrant','planned_winner_id','featured_elimination'].includes(e.target.name)&&e.target.closest('#segment-form')){syncParticipantChoices(e.target.closest('#segment-form'));syncBookingEligibility(e.target.closest('#segment-form'));}
  if(e.target.dataset.cardTier){run(()=>request(`/wrestlers/${encodeURIComponent(e.target.dataset.cardTier)}/tier`,'POST',{tier:e.target.value}),'Roster tier updated.');return;}if(e.target.id==='quick-nav'){changeView(e.target.value);return;}if(e.target.id==='segment-storyline'){
  const story=model.data.storylines.find(s=>s.id===e.target.value),form=e.target.closest('form');
  if(story&&form){const task=model.data.creative_tasks.find(t=>t.storyline_id===story.id);

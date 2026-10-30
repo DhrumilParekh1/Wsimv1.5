@@ -98,15 +98,27 @@ def simulate_segment(state: GameState, segment: Segment, rng: random.Random,
     duration = duration_risk(segment.kind,segment.duration,segment.stipulation,rng)
     # Roll every scripted wrestling exchange and spoken beat before rating the segment.
     if detailed_match:
-        from .match_engine import generate_highlights
-        highlights=generate_highlights(state,segment,rng)
+        if segment.match_format=="battle_royale":
+            from .battle_royale import royale_highlights
+            details=royale_highlights(state,segment,rng)
+            detailed_match.update(details)
+            highlights=details["highlights"]
+        elif segment.match_format in ("triple_threat","fatal_four_way"):
+            from .multi_match_engine import multi_highlights
+            details=multi_highlights(state,segment,rng)
+            detailed_match.update(details)
+            highlights=details["highlights"]
+        else:
+            from .match_engine import generate_highlights
+            highlights=generate_highlights(state,segment,rng)
         detailed_match['highlights']=highlights
     else:
         from .highlights import generate_segment_highlights
         highlights=generate_segment_highlights(state,segment,rng)
     actions=[h for h in highlights if 'action_delta' in h]
     action_modifier=sum(h['action_delta'] for h in actions)/max(1,len(actions))
-    quality = clamp(baseline + match_modifier + noise + duration['adjustment']+action_modifier)
+    interaction_bonus=(detailed_match.get('interaction_quality',50)-50)*.07 if detailed_match and segment.match_format!='singles' else 0
+    quality = clamp(baseline + match_modifier + noise + duration['adjustment']+action_modifier+interaction_bonus)
 
     from .fan_interest import fan_context, fan_outcome
     context=fan_context(state,segment,story)
@@ -156,7 +168,13 @@ def simulate_segment(state: GameState, segment: Segment, rng: random.Random,
     if winner and not match:
         summary += f" Booked winner: {state.wrestlers[winner].name}."
     if detailed_match:
-        summary = ' '.join(detailed_match['beats'])
+        if segment.match_format=="singles":
+            summary=' '.join(detailed_match['beats'])
+        else:
+            names=', '.join(w.name for w in wrestlers)
+            format_name=segment.match_format.replace('_',' ')
+            summary=(f"{names} competed in a {segment.duration}-minute {format_name}. "
+                     + detailed_match["highlights"][-1]["text"])
     else:
         nonmatch_highlights=highlights
     if segment.promo_brawl and not match:
@@ -168,6 +186,8 @@ def simulate_segment(state: GameState, segment: Segment, rng: random.Random,
     result = {
         "title": segment.title, "kind": segment.kind, "duration": segment.duration,
         "storyline_id": segment.storyline_id, "promo_topic": segment.promo_topic,
+        "match_format":segment.match_format, "tournament_id":segment.tournament_id,
+        "tournament_match_id":segment.tournament_match_id,
         "participants": segment.wrestler_ids, "winner": winner,
         "quality": round(quality, 2), "crowd": round(crowd, 2),
         "audience": {**context,**reactions},
@@ -181,6 +201,8 @@ def simulate_segment(state: GameState, segment: Segment, rng: random.Random,
                          "Fans had a mixed response, particularly to the pacing or execution." if crowd>=43 else
                          "The audience was disappointed and wants a stronger follow-up."), "factors": {k: round(v, 2) for k, v in factors.items()},
         "match_details": match_details, "match_engine": detailed_match,
+        "eliminations":(detailed_match or {}).get('eliminations',[]),
+        "individual_performance":(detailed_match or {}).get('individual_performance',{}),
         "highlights": detailed_match["highlights"] if detailed_match else nonmatch_highlights,
         "injuries": [], "duration_risk":duration,"surprise":surprise,"role_turn":None,"expectations":None,
         "planned_beat_delivered": planned_beat_delivered, "narrative": summary,

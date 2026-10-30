@@ -47,6 +47,7 @@ def book_show(state: GameState, name: str, segments: list[Segment], duration: in
     if estimated_marketing > state.player_company.money:
         raise ValueError('Insufficient funds for planned advertising/promotion')
     match_appearances = set()
+    tournament_fixtures=set()
     storyline_slots: dict[str, int] = {}
     featured_divisions: set[str] = set()
     for segment in segments:
@@ -106,13 +107,16 @@ def book_show(state: GameState, name: str, segments: list[Segment], duration: in
                 if not any((item.get("winner")==segment.wrestler_ids[0])==(segment.promo_topic=="recent_win")
                            for item in recent[-8:]):
                     raise ValueError("This promo topic requires a recorded matching win or defeat.")
+        from .tournaments import validate_tournament_segment
+        validate_tournament_segment(state,segment,tournament_fixtures)
         check_title_match(state,segment)
         if segment.kind == "match":
             if match_appearances.intersection(segment.wrestler_ids):
                 raise ValueError("A wrestler can only participate in one match per show")
             match_appearances.update(segment.wrestler_ids)
     custom=any(c.get('type')=='company_foundation' for c in state.campaigns)
-    if custom:
+    inaugural=any(segment.tournament_id for segment in segments)
+    if custom or inaugural:
         represented={state.wrestlers[segment.wrestler_ids[0]].division
                      for segment in segments if segment.wrestler_ids}
         if represented!={'men','women'}:
@@ -160,6 +164,9 @@ def simulate_show(state: GameState, show_id: str) -> dict:
     for segment in show.segments:
         outcome = simulate_segment(state, segment, rng, crowd_fatigue)
         results.append(outcome)
+        if segment.tournament_id:
+            from .tournaments import record_result
+            record_result(state,segment,outcome,show.id)
         if segment.championship_id:
             title_result=settle_title_match(state,segment,outcome,state.week)
             if title_result:
@@ -229,15 +236,22 @@ def simulate_show(state: GameState, show_id: str) -> dict:
             if segment.kind == 'betrayal': effect -= .8
             left.relationships[right.id] = clamp(left.relationships.get(right.id, 0) + effect, -25, 25)
             right.relationships[left.id] = clamp(right.relationships.get(left.id, 0) + effect, -25, 25)
+        # Battle royale performers eliminated early have lower exposure than the
+        # final survivors; persist that difference in fatigue and medical RNG.
+        from dataclasses import replace
+        elimination_minutes={e["wrestler_id"]:e["minute"] for e in outcome.get("eliminations",[])}
         for wid in segment.wrestler_ids:
+            active_minutes=max(1,elimination_minutes.get(wid,segment.duration))
             after_appearance(state.wrestlers[wid], segment.kind, outcome["crowd"],
-                             outcome["quality"], segment.duration, rng,
+                             outcome["quality"], active_minutes, rng,
                              intensity=segment.intensity, stipulation=segment.stipulation,
                              promo_brawl=segment.promo_brawl)
         # Medical availability is computed after performance, not by the prose model.
         from .injuries import roll_injury
         for wid in segment.wrestler_ids:
-            injury=roll_injury(state,state.wrestlers[wid],segment,rng)
+            exposure=max(1,elimination_minutes.get(wid,segment.duration))
+            exposure_segment=replace(segment,duration=exposure) if exposure!=segment.duration else segment
+            injury=roll_injury(state,state.wrestlers[wid],exposure_segment,rng)
             if injury:
                 outcome['injuries'].append(injury)
                 outcome['highlights'].append({'minute':segment.duration,'text':injury['description'],
@@ -285,9 +299,14 @@ def simulate_show(state: GameState, show_id: str) -> dict:
     finances['promotion_spend']=promotion_cost
     finances['event_net']-=promotion_cost
     state.player_company.money-=promotion_cost
-    title_bouts=[s for s in show.segments if s.championship_id]
+    # Crowning a vacant title through a tournament final draws title-match
+    # interest even though the semi-finals have no championship_id.
+    title_bouts=[(seg,result) for seg,result in zip(show.segments,results)
+                 if seg.championship_id or result.get('championship')]
     if title_bouts:
-        prestige=sum(state.championships[s.championship_id]['prestige'] for s in title_bouts)/len(title_bouts)
+        prestige=sum(state.championships[
+            seg.championship_id or result['championship']['belt_id']
+        ]['prestige'] for seg,result in title_bouts)/len(title_bouts)
         uplift=int(finances['streaming']*(.08+len(title_bouts)*.035)*prestige/100)
         finances['title_interest_revenue']=uplift
         finances['event_net']+=uplift
