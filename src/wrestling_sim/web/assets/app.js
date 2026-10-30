@@ -303,10 +303,34 @@ function syncBookingEligibility(form){
  if(secondInput)secondInput.required=mandatory;
  const label=form.querySelector('#second-performer-label');
  if(label)label.textContent=mandatory?'Performer 2 (required)':kind==='promo'?'Interrupting wrestler (optional)':'Performer 2 (optional)';
+ const format=kind==='match'?(form.elements.namedItem('match_format')?.value||'singles'):'singles';
+ for(const [selector,visible] of [
+   ['.multi-third',kind==='match'&&['triple_threat','fatal_four_way'].includes(format)],
+   ['.multi-fourth',kind==='match'&&format==='fatal_four_way'],
+   ['.battle-entrants',kind==='match'&&format==='battle_royale']
+ ]){
+   form.querySelectorAll(selector).forEach(el=>el.classList.toggle('hidden',!visible));
+ }
+ for(const field of ['third','fourth']){
+  const select=form.elements.namedItem(field);
+  if(select)select.required=field==='third'?['triple_threat','fatal_four_way'].includes(format):format==='fatal_four_way';
+ }
+ const finish=form.elements.namedItem('finish_type');
+ if(finish&&format==='battle_royale'){finish.value='clean';}
+ if(finish)for(const option of finish.options){
+  option.disabled=format!=='singles'&&!['clean','flash_pin','interference'].includes(option.value)||
+                  format==='battle_royale'&&option.value!=='clean';
+ }
+ const involved=selectedMatchParticipants(form);
+ const winner=form.elements.namedItem('planned_winner_id');
+ if(winner){
+  const old=winner.value;
+  winner.innerHTML=optionList(involved.map(who).filter(Boolean),old,'Choose booked winner');
+ }
  const title=form.elements.namedItem('championship_id');
  if(title){
-  const ids=[first,second].filter(Boolean);
-  const eligible=(model.data.championships||[]).filter(b=>ids.length===2&&ids.includes(b.holder_id)&&ids.every(id=>who(id)?.division===b.division));
+  const ids=selectedMatchParticipants(form);
+  const eligible=(model.data.championships||[]).filter(b=>ids.length>=2&&ids.includes(b.holder_id)&&ids.every(id=>who(id)?.division===b.division));
   const selected=title.value;
   title.innerHTML='<option value="">Non-title match</option>'+eligible.map(b=>`<option value="${safe(b.id)}">${safe(b.name)}</option>`).join('');
   title.value=eligible.some(b=>b.id===selected)?selected:'';
@@ -379,6 +403,17 @@ app.addEventListener('click',async e=>{
  const skipSetup=e.target.closest('[data-skip-company-setup]');if(skipSetup){model.setupDismissed=true;render();return;}
  const reopenSetup=e.target.closest('[data-open-company-setup]');if(reopenSetup){model.setupDismissed=false;render();return;}
 const pressNotice=e.target.closest('[data-press-reminder]');if(pressNotice){model.view='press';model.modal=null;render();return;}
+ const fixtureButton=e.target.closest('[data-tournament-fixture]');
+ if(fixtureButton){
+  const tour=(model.data.tournaments||[]).find(t=>t.id===fixtureButton.dataset.tournamentFixture);
+  const fixture=tour?.rounds.flat().find(m=>m.id===fixtureButton.dataset.matchId);
+  if(!tour||!fixture||fixture.status!=='ready'){notify('Fixture no longer available',true);return;}
+  model.prefill={kind:'match',title:tour.name+' — '+fixture.participants.map(id=>who(id)?.name||id).join(' vs '),
+     duration:Math.min(25,model.data.company.show_minutes),
+     wrestler_ids:fixture.participants,match_format:fixture.match_format,
+     tournament_id:tour.id,tournament_match_id:fixture.id,tournament_name:tour.name};
+  model.view='booker';render();notify('Tournament fixture loaded into Show Booker. Choose the booked winner.');return;
+ }
  const press=e.target.closest('[data-press]');if(press){await run(()=>request('/ui/press/answer','POST',{question_id:press.dataset.press,choice:press.dataset.pressChoice}),'Press response published.');return;}
  const bid=e.target.closest('[data-rival-offer]');if(bid){await run(()=>request('/ui/recruit/rival-offer','POST',{offer_id:bid.dataset.rivalOffer,decision:bid.dataset.bidAction}),'Rival contract offer processed.');return;}
  const acknowledge=e.target.closest('[data-ack-recruit]');if(acknowledge){await run(()=>request('/ui/recruit/acknowledge','POST',{key:acknowledge.dataset.ackRecruit}),'Recruitment report reviewed.');return;}
@@ -417,6 +452,13 @@ const pressNotice=e.target.closest('[data-press-reminder]');if(pressNotice){mode
   if(result){model.narrationStatus=result.narrative_generation;model.liveIndex=0;model.highlightIndex=0;model.modal={type:'live',id};render();watchNarration(id);}else render();
   return;}const action=e.target.closest('[data-action]');if(action?.dataset.action==='advance'){if((model.data.inbox_blockers||[]).length){model.view='dashboard';model.modal=null;render();notify(`Resolve ${(model.data.inbox_blockers||[]).length} inbox item(s) before advancing.`,true);return;}const confirmed=activeShow()?window.confirm('Your current show must be simulated before advancing. Continue?'):true;if(confirmed){const r=await run(()=>request('/weeks/advance','POST'),'A new week begins.');if(r){model.view='dashboard';render();}}}if(action?.dataset.action==='reset'){if(window.confirm('This will permanently replace the current campaign save with a new game. Start again?')){const result=await run(()=>request('/game/new','POST',{seed:2026}),'Started a fresh 2026 campaign.');if(result){model.draft=[];model.modal=null;model.view='dashboard';render();}}}});
 app.addEventListener('submit',async e=>{
+ if(e.target.matches('form[data-tournament-form]')){
+  e.preventDefault();const form=e.target,f=new FormData(form);
+  const data={belt_id:form.dataset.tournamentForm,entrant_ids:f.getAll('entrant'),
+              method:f.get('method'),name:String(f.get('name')||'').trim()||null};
+  await run(()=>request('/tournaments','POST',data),'Championship competition created.');
+  return;
+ }
  if(e.target.id==='setup-company-form'){
   e.preventDefault();const form=e.target,level=form.elements.namedItem('tier').value,
   n={indie:1,startup:2,juggernaut:3}[level];
@@ -468,7 +510,9 @@ function syncParticipantChoices(form){
 }
 
 app.addEventListener('input',e=>{if(e.target.id==='setup-company-name')model.companyName=e.target.value;});
-app.addEventListener('change',e=>{if(e.target.id==='setup-tier'){model.companyTier=e.target.value;render();return;}if(['first','second'].includes(e.target.name)&&e.target.closest('#segment-form')){syncParticipantChoices(e.target.closest('#segment-form'));syncBookingEligibility(e.target.closest('#segment-form'));}
+app.addEventListener('change',e=>{if(e.target.id==='setup-tier'){model.companyTier=e.target.value;render();return;}if(e.target.id==='segment-match-format'&&e.target.closest('#segment-form')){
+  const form=e.target.closest('#segment-form');syncParticipantChoices(form);syncBookingEligibility(form);return;
+ }if(['first','second','third','fourth','battle_entrant'].includes(e.target.name)&&e.target.closest('#segment-form')){syncParticipantChoices(e.target.closest('#segment-form'));syncBookingEligibility(e.target.closest('#segment-form'));}
  if(e.target.dataset.cardTier){run(()=>request(`/wrestlers/${encodeURIComponent(e.target.dataset.cardTier)}/tier`,'POST',{tier:e.target.value}),'Roster tier updated.');return;}if(e.target.id==='quick-nav'){changeView(e.target.value);return;}if(e.target.id==='segment-storyline'){
  const story=model.data.storylines.find(s=>s.id===e.target.value),form=e.target.closest('form');
  if(story&&form){const task=model.data.creative_tasks.find(t=>t.storyline_id===story.id);
