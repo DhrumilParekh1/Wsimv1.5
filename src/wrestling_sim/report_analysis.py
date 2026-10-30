@@ -26,7 +26,12 @@ def analyze_segment(segment):
     if gap<-10:concerns.append(f'Fan satisfaction was {abs(gap):.1f} points below expectations')
     if gap>9:positives.append('Audience satisfaction surpassed the buildup')
     if audience.get('fatigue',0)>=12:concerns.append('Recent repetition reduced interest')
-    if not positives:positives.append('The segment contributed to the ongoing show narrative' if crowd>=45 else 'Some storyline context remains')
+    if not positives:
+        if segment.get('storyline_id'):
+            positives.append('The segment contributed to the ongoing show narrative' if crowd>=45 else 'Storyline context remains')
+        else:
+            positives.append('A standalone segment brought variety to the card' if crowd>=45 else
+                             'No ongoing rivalry was attached to this segment')
     if not concerns and quality<60:concerns.append('Overall execution fell short of a strong rating')
     conclusion=(f'{verdict}. {"; ".join(positives[:2])}. '
                 + ('Concerns: '+ '; '.join(concerns[:2])+'.' if concerns else 'Fans responded favourably.'))

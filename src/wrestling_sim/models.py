@@ -135,6 +135,8 @@ class Segment:
     stipulation: str = "standard"
     intensity: str = "standard"
     promo_brawl: bool = False
+    promo_topic: str | None = None  # optional solo in-ring promo purpose, distinct from storyline direction
+    promo_interrupt: bool = False
     match_styles: list[str] = field(default_factory=list)  # ordered 2–3 style combination; [] loads legacy saves
     role_turn_wrestler_id: str | None = None
     role_turn_to: str | None = None
@@ -155,6 +157,14 @@ class Segment:
             raise ValueError("Segment duration must be 1..60 minutes")
         if len(set(self.wrestler_ids)) != len(self.wrestler_ids) or not self.wrestler_ids:
             raise ValueError("Segments need at least one unique participant")
+        if self.promo_topic is not None and (self.kind != "promo" or self.promo_topic not in (
+            "self_hype","ambitions","address_fans","recent_win","recent_loss",
+            "open_challenge","title_reign","callout")):
+            raise ValueError("Unknown solo promo topic")
+        if self.promo_interrupt and (self.kind!="promo" or len(self.wrestler_ids)!=2):
+            raise ValueError("An interrupted promo requires two different wrestlers")
+        if self.kind=="confrontation" and len(self.wrestler_ids)<2:
+            raise ValueError("A confrontation requires at least two wrestlers")
         if self.kind == "match" and len(self.wrestler_ids) != 2:
             raise ValueError("Starter engine supports singles matches with exactly 2 wrestlers")
         if self.planned_winner_id and (self.kind != "match" or self.planned_winner_id not in self.wrestler_ids):

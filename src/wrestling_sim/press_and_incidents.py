@@ -45,6 +45,7 @@ PRESS_CHOICES = [
  {'id':'candid','label':'Give an honest, measured answer','hint':'Fan trust and credibility'},
  {'id':'deflect','label':'Keep your plans private','hint':'Protect flexibility, may disappoint fans'},
  {'id':'challenge','label':'Set an ambitious public target','hint':'Major hype potential; makes a promise'},
+ {'id':'neutral','label':'Stay neutral and avoid commitments','hint':'Minimal immediate effect on fans or talent'},
 ]
 
 INCIDENT_TEMPLATES = [
@@ -260,7 +261,8 @@ PRESS_TOPIC_CHOICES = {
 
 def contextual_press_options(topic,name,rival):
     labels=PRESS_TOPIC_CHOICES.get(topic,PRESS_TOPIC_CHOICES['future'])
-    return [{**item,'label':labels[i].format(name=name,rival=rival)} for i,item in enumerate(PRESS_CHOICES)]
+    return [{**item,'label':(labels[i].format(name=name,rival=rival) if i<len(labels) else item['label'])}
+            for i,item in enumerate(PRESS_CHOICES)]
 
 
 def conference(state):
@@ -283,6 +285,23 @@ def conference(state):
     return state.press_conferences[key]
 
 
+def _reaction(delta,subject):
+    """Audience-scale wording, while keeping exact internal numeric changes."""
+    if abs(delta)<.13:
+        return f"{subject} remained largely unchanged."
+    if delta>.85:
+        return f"{subject} responded extremely positively."
+    if delta>.35:
+        return f"{subject} welcomed the response."
+    if delta>0:
+        return f"{subject} seemed slightly encouraged."
+    if delta<-.85:
+        return f"{subject} reacted very negatively."
+    if delta<-.35:
+        return f"{subject} was disappointed by the response."
+    return f"{subject} seemed slightly unimpressed."
+
+
 def answer_press(state,question_id,choice):
     session=conference(state)
     q=next((q for q in session['questions'] if q['id']==question_id),None)
@@ -290,21 +309,23 @@ def answer_press(state,question_id,choice):
     if choice not in [o['id'] for o in PRESS_CHOICES]:raise ValueError('Unknown press answer')
     w=state.wrestlers[q['wrestler_id']]
     rng=_rng(state,question_id+choice)
-    consistency={'back':1.0,'candid':.8,'deflect':-.15,'challenge':1.4}[choice]
-    trust_delta=consistency*.32+rng.triangular(-.4,.4,0)
-    w_delta={'back':.8,'candid':.25,'deflect':-.2,'challenge':.35}[choice]+rng.triangular(-.25,.25,0)
+    consistency={'back':1.0,'candid':.8,'deflect':-.15,'challenge':1.4,'neutral':0}[choice]
+    trust_delta=0.0 if choice=='neutral' else consistency*.32+rng.triangular(-.4,.4,0)
+    w_delta=0.0 if choice=='neutral' else {'back':.8,'candid':.25,'deflect':-.2,'challenge':.35}[choice]+rng.triangular(-.25,.25,0)
     if w.personality=='volatile' and choice=='deflect':w_delta-=.4
     state.player_company.fan_trust=clamp(state.player_company.fan_trust+trust_delta)
     w.owner_relationship=clamp(w.owner_relationship+w_delta,0,25)
-    state.player_company.sponsor_interest=clamp(state.player_company.sponsor_interest+(.3 if choice=='candid' else -.15 if choice=='challenge' else .1))
+    sponsor_delta=0 if choice=='neutral' else .3 if choice=='candid' else -.15 if choice=='challenge' else .1
+    state.player_company.sponsor_interest=clamp(state.player_company.sponsor_interest+sponsor_delta)
     if choice=='challenge':
         from .front_office import queue_problem
         # Publicly committing to the star creates an additional long-term expectation.
         key=f'press-promise-{w.id}-{state.year}-{state.week}-{q["id"]}'
         state.assignments[key]={'wrestler_id':w.id,'due_week':state.week+3,'fulfilled':False,'kind':'press_push'}
     q['answer']=choice
-    q['outcome']=f'Your {choice} response changed fan trust by {trust_delta:+.2f} and your relationship with {w.name} by {w_delta:+.2f}.'
+    q['effects']={'fan_trust':round(trust_delta,3),'owner_relationship':round(w_delta,3),'sponsor_interest':round(sponsor_delta,3)}
+    q['outcome']=_reaction(trust_delta,"The audience")+" "+_reaction(w_delta,w.name)
     session['completed']=all(item['answer'] is not None for item in session['questions'])
-    state.world_news.append({'year':state.year,'week':state.week,'category':'press','headline':f'Aurora owner addresses {q["topic"]} questions',
+    state.world_news.append({'year':state.year,'week':state.week,'category':'press','headline':f'{state.player_company.name} owner addresses {q["topic"]} questions',
                              'body':q['text']+' '+q['outcome']})
     return {'outcome':q['outcome'],'completed':session['completed']}

@@ -167,6 +167,7 @@ def simulate_segment(state: GameState, segment: Segment, rng: random.Random,
                 " The crowd struggled to connect.")
     result = {
         "title": segment.title, "kind": segment.kind, "duration": segment.duration,
+        "storyline_id": segment.storyline_id, "promo_topic": segment.promo_topic,
         "participants": segment.wrestler_ids, "winner": winner,
         "quality": round(quality, 2), "crowd": round(crowd, 2),
         "audience": {**context,**reactions},

@@ -436,12 +436,84 @@ def homepage():
     return FileResponse(WEB_DIR / 'index.html')
 
 
+class CompanySetupRequest(BaseModel):
+    name: str
+    tier: str
+    men: list[str]
+    women: list[str]
+
+
+@app.post('/ui/setup/company')
+def ui_setup_company(request: CompanySetupRequest):
+    """Apply only on an unplayed real-world save; keep an original save backup."""
+    from .company_creation import create_company
+    import shutil
+    from datetime import datetime, timezone
+    with service.lock:
+        try:
+            candidate=create_company(service.state,request.name,request.tier,
+                                     request.men,request.women)
+            if service.path.exists():
+                stamp=datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')
+                original=service.path
+                backup=original.with_name(original.name+'.before-company-'+stamp+'.bak')
+                shutil.copy2(original,backup)
+            old=service.state
+            service.state=candidate
+            try:
+                service.save()
+            except Exception:
+                service.state=old
+                raise
+            return {'company':candidate.player_company.name,
+                    'tier':request.tier,
+                    'roster_size':len(request.men)+len(request.women)}
+        except ValueError as exc:
+            raise HTTPException(status_code=400,detail=str(exc)) from exc
+
+
+def _portrait_data(state):
+    """Match source verified identities; do not infer a portrait from a name alone."""
+    from .real_photos import lookup_photos
+    from .real_data import DEFAULT_DB
+    path=os.getenv('RINGSIDE_REAL_DATA_DB',str(DEFAULT_DB))
+    try:
+        by_id=lookup_photos(path)
+    except (OSError,ValueError):
+        return {}
+    linked={}
+    for item in state.activity_log:
+        if item.get('type')=='real_roster_provenance' and item.get('wikidata_id'):
+            linked[item['wrestler_id']]=item['wikidata_id']
+    # After a campaign is created, a later photo sync can resolve formerly
+    # unknown official roster IDs. Match only exact stored sourced names.
+    from .real_universe import normalize_name
+    from .real_data import connection
+    names={}
+    try:
+        with connection(path) as db:
+            for qid,name in db.execute("SELECT wikidata_id,display_name FROM people"):
+                names.setdefault(normalize_name(name),set()).add(qid)
+    except OSError:
+        pass
+    result={}
+    for wid in state.wrestlers:
+        qid=linked.get(wid) or (wid[3:] if wid.startswith('wd_Q') else None)
+        if qid is None and wid.startswith('rw_'):
+            matches=names.get(normalize_name(state.wrestlers[wid].name),set())
+            qid=next(iter(matches)) if len(matches)==1 else None
+        if qid in by_id:result[wid]=by_id[qid]
+    return result
+
+
 @app.get('/ui/state')
 def ui_state():
     with service.lock:
         state = service.state
         bootstrap_world(state)
+        portraits=_portrait_data(state)
         return {
+            'setup_eligible': __import__('wrestling_sim.company_creation',fromlist=['is_eligible_for_company_creation']).is_eligible_for_company_creation(state),
             'year': state.year, 'week': state.week,
             'company': {**asdict(state.player_company), 'prestige': __import__('wrestling_sim.industry',fromlist=['company_prestige']).company_prestige(state,state.player_company_id)},
             'company_prestige': {cid:__import__('wrestling_sim.industry',fromlist=['company_prestige']).company_prestige(state,cid) for cid in state.companies},
@@ -452,7 +524,7 @@ def ui_state():
             'transfer_offers': [o for o in state.transfer_offers if o.get('status')=='pending'],
             'expansion': {kind:__import__('wrestling_sim.industry',fromlist=['expansion_quote']).expansion_quote(state,kind) for kind in ('extra_ppv','more_hours')},
             'companies': [asdict(c) for c in state.companies.values()],
-            'wrestlers': [{**asdict(w), 'ratings': {**rating_breakdown(w), 'market_dollars':__import__('wrestling_sim.front_office',fromlist=['monetary_value']).monetary_value(w,state)}}
+            'wrestlers': [{**asdict(w), **portraits.get(w.id,{}), 'ratings': {**rating_breakdown(w), 'market_dollars':__import__('wrestling_sim.front_office',fromlist=['monetary_value']).monetary_value(w,state)}}
                           for w in state.wrestlers.values()],
             'storylines': [asdict(s) for s in state.storylines.values()],
             'championships': list(__import__('wrestling_sim.championships',fromlist=['ensure_championships']).ensure_championships(state).values()),
