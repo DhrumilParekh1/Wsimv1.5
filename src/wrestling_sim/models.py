@@ -143,6 +143,9 @@ class Segment:
     promotion_effort: float | None = None  # legacy 0..25 input; existing saves only
     promotion_budget: int | None = None  # cash allocated per segment
     championship_id: str | None = None
+    match_format: str = "singles"  # singles/triple_threat/fatal_four_way/battle_royale
+    tournament_id: str | None = None
+    tournament_match_id: str | None = None
 
     def __post_init__(self) -> None:
         if not self.title.strip():
@@ -165,8 +168,24 @@ class Segment:
             raise ValueError("An interrupted promo requires two different wrestlers")
         if self.kind=="confrontation" and len(self.wrestler_ids)<2:
             raise ValueError("A confrontation requires at least two wrestlers")
-        if self.kind == "match" and len(self.wrestler_ids) != 2:
-            raise ValueError("Starter engine supports singles matches with exactly 2 wrestlers")
+        formats={"singles":(2,2),"triple_threat":(3,3),
+                 "fatal_four_way":(4,4),"battle_royale":(4,20)}
+        if self.match_format not in formats:
+            raise ValueError("Unknown match format")
+        if self.kind != "match" and self.match_format != "singles":
+            raise ValueError("Multi-person formats are matches only")
+        if self.kind == "match":
+            low, high = formats[self.match_format]
+            if not low <= len(self.wrestler_ids) <= high:
+                raise ValueError(f"{self.match_format} requires {low}–{high} wrestlers")
+            if self.match_format != "singles" and self.finish_type not in (
+                    ("clean",) if self.match_format=="battle_royale"
+                    else ("clean","flash_pin","interference")):
+                raise ValueError("Multi-person matches require a compatible finish")
+        if bool(self.tournament_id) != bool(self.tournament_match_id):
+            raise ValueError("Tournament identifier and match identifier must be supplied together")
+        if self.tournament_id and self.kind!="match":
+            raise ValueError("Only matches can advance a tournament")
         if self.planned_winner_id and (self.kind != "match" or self.planned_winner_id not in self.wrestler_ids):
             raise ValueError("Booked winner must appear in a match")
         if self.promotion_budget is not None and (self.promotion_budget < 0 or self.promotion_budget > 100000000):
@@ -252,6 +271,7 @@ class GameState:
     memories: list[dict[str, Any]] = field(default_factory=list)
     narrative_alerts: list[dict[str, Any]] = field(default_factory=list)
     championships: dict[str, dict[str, Any]] = field(default_factory=dict)
+    tournaments: dict[str, dict[str, Any]] = field(default_factory=dict)
     chemistry: dict[str, dict[str, Any]] = field(default_factory=dict)
     talent_appearances: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     talent_concerns: list[dict[str, Any]] = field(default_factory=list)
