@@ -115,7 +115,8 @@ def book_show(state: GameState, name: str, segments: list[Segment], duration: in
                 raise ValueError("A wrestler can only participate in one match per show")
             match_appearances.update(segment.wrestler_ids)
     custom=any(c.get('type')=='company_foundation' for c in state.campaigns)
-    if custom:
+    inaugural=any(segment.tournament_id for segment in segments)
+    if custom or inaugural:
         represented={state.wrestlers[segment.wrestler_ids[0]].division
                      for segment in segments if segment.wrestler_ids}
         if represented!={'men','women'}:
