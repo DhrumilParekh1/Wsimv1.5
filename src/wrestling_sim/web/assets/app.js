@@ -124,6 +124,7 @@ function booking(){
  <div class="field match-config multi-third ${selectedKind!=='match'?'hidden':''}"><label>Performer 3 (Triple Threat / Fatal Four-Way)</label><select name="third" class="select">${optionList(r,p.wrestler_ids?.[2]||'','Choose third wrestler')}</select></div>
  <div class="field match-config multi-fourth ${selectedKind!=='match'?'hidden':''}"><label>Performer 4 (Fatal Four-Way)</label><select name="fourth" class="select">${optionList(r,p.wrestler_ids?.[3]||'','Choose fourth wrestler')}</select></div>
  <div class="field match-config battle-entrants ${selectedKind!=='match'?'hidden':''} full"><label>Additional Battle Royale entrants (Ctrl/Command to select multiple)</label><select multiple size="7" name="battle_entrant" class="select">${r.filter(w=>!p.wrestler_ids?.slice(0,2).includes(w.id)).map(w=>`<option value="${safe(w.id)}" ${(p.wrestler_ids||[]).slice(2).includes(w.id)?'selected':''}>${safe(w.name)}</option>`).join('')}</select><small>Choose between 4 and 20 entrants overall. Performer 1 and 2 are included.</small></div>
+ <div class="field match-config battle-featured ${selectedKind!=='match'?'hidden':''} full"><label>Optional featured late eliminations</label><select multiple name="featured_elimination" size="5" class="select"></select><small>Optional: highlight selected wrestlers near the final stretch. The last survivor is always the booked winner.</small></div>
  <div class="field"><label>Active storyline</label><select class="select" name="storyline_id" id="segment-storyline">${selectStory().replace(`value="${safe(p.storyline_id||'')}"`,`value="${safe(p.storyline_id||'')}" selected`)}</select></div><div class="field" id="storyline-direction-config"><label>Storyline creative direction</label><select name="creative_direction" class="select">${[["advance","Advance"],["slow_burn","Slow burn"],["escalate","Escalate"],["swerve","Twist"],["resolve","Resolve"]].map(([v,l])=>`<option value="${v}" ${p.creative_direction===v?"selected":""}>${l}</option>`).join("")}</select><small>Direction affects hype, story coherence, fan trust and the expectations of the audience. Repeated escalation and premature resolution can backfire.</small></div>
  <div class="field full promo-config ${selectedKind==='match'?'hidden':''}" id="promo-topic-config"><label>Solo promo purpose</label><select name="promo_topic" class="select"><option value="self_hype">Hype themselves up</option><option value="ambitions">Discuss personal ambitions</option><option value="address_fans">Address the audience</option><option value="callout">Call out a potential opponent</option></select><small>Additional options appear for champions and recent wins or losses.</small></div>
  <div class="field match-config ${selectedKind!=='match'?'hidden':''}"><label>Primary style (65% with two / 55% with three)</label><select name="match_style" class="select">${['balanced','technical','high_flying','power','brawl','storytelling'].map(k=>`<option value="${k}">${safe(k.replaceAll('_',' '))}</option>`).join('')}</select></div>
@@ -307,7 +308,8 @@ function syncBookingEligibility(form){
  for(const [selector,visible] of [
    ['.multi-third',kind==='match'&&['triple_threat','fatal_four_way'].includes(format)],
    ['.multi-fourth',kind==='match'&&format==='fatal_four_way'],
-   ['.battle-entrants',kind==='match'&&format==='battle_royale']
+   ['.battle-entrants',kind==='match'&&format==='battle_royale'],
+   ['.battle-featured',kind==='match'&&format==='battle_royale']
  ]){
    form.querySelectorAll(selector).forEach(el=>el.classList.toggle('hidden',!visible));
  }
@@ -326,6 +328,12 @@ function syncBookingEligibility(form){
  if(winner){
   const old=winner.value;
   winner.innerHTML=optionList(involved.map(who).filter(Boolean),old,'Choose booked winner');
+ }
+ const featured=form.elements.namedItem('featured_elimination');
+ if(featured){
+  const old=[...featured.selectedOptions].map(o=>o.value);
+  const winnerValue=form.elements.namedItem('planned_winner_id')?.value;
+  featured.innerHTML=involved.filter(id=>id!==winnerValue).map(id=>'<option value="'+safe(id)+'" '+(old.includes(id)?'selected':'')+'>'+safe(who(id)?.name||id)+'</option>').join('');
  }
  const title=form.elements.namedItem('championship_id');
  if(title){
@@ -368,7 +376,7 @@ function addSegment(form){
   ids=selectedMatchParticipants(form);
  if(['match','confrontation'].includes(kind)&&!second)throw Error('Select two different performers for this segment.');
  addSegmentObject({kind,title:String(f.get('title')).trim(),duration:Number(f.get('duration')),
-  wrestler_ids:ids,match_format:format,tournament_id:f.get('tournament_id')||null,
+  wrestler_ids:ids,match_format:format,featured_eliminations:format==='battle_royale'?f.getAll('featured_elimination'):[],tournament_id:f.get('tournament_id')||null,
   tournament_match_id:f.get('tournament_match_id')||null,storyline_id:f.get('storyline_id')||null,promotion_budget:Number(f.get('promotion_budget')||0),
   planned_winner_id:kind==='match'?(f.get('planned_winner_id')||null):null,
   championship_id:kind==='match'?(f.get('championship_id')||null):null,
@@ -512,7 +520,7 @@ function syncParticipantChoices(form){
 app.addEventListener('input',e=>{if(e.target.id==='setup-company-name')model.companyName=e.target.value;});
 app.addEventListener('change',e=>{if(e.target.id==='setup-tier'){model.companyTier=e.target.value;render();return;}if(e.target.id==='segment-match-format'&&e.target.closest('#segment-form')){
   const form=e.target.closest('#segment-form');syncParticipantChoices(form);syncBookingEligibility(form);return;
- }if(['first','second','third','fourth','battle_entrant'].includes(e.target.name)&&e.target.closest('#segment-form')){syncParticipantChoices(e.target.closest('#segment-form'));syncBookingEligibility(e.target.closest('#segment-form'));}
+ }if(['first','second','third','fourth','battle_entrant','planned_winner_id','featured_elimination'].includes(e.target.name)&&e.target.closest('#segment-form')){syncParticipantChoices(e.target.closest('#segment-form'));syncBookingEligibility(e.target.closest('#segment-form'));}
  if(e.target.dataset.cardTier){run(()=>request(`/wrestlers/${encodeURIComponent(e.target.dataset.cardTier)}/tier`,'POST',{tier:e.target.value}),'Roster tier updated.');return;}if(e.target.id==='quick-nav'){changeView(e.target.value);return;}if(e.target.id==='segment-storyline'){
  const story=model.data.storylines.find(s=>s.id===e.target.value),form=e.target.closest('form');
  if(story&&form){const task=model.data.creative_tasks.find(t=>t.storyline_id===story.id);
