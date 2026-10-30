@@ -148,6 +148,7 @@ class SegmentRequest(BaseModel):
     match_format: str = "singles"
     tournament_id: str | None = None
     tournament_match_id: str | None = None
+    featured_eliminations: list[str] = Field(default_factory=list)
     role_turn_wrestler_id: str | None = None
     role_turn_to: str | None = None
 
