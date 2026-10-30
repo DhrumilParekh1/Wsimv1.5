@@ -145,8 +145,33 @@ class SegmentRequest(BaseModel):
     intensity: str = "standard"
     promo_brawl: bool = False
     match_styles: list[str] = Field(default_factory=list)
+    match_format: str = "singles"
+    tournament_id: str | None = None
+    tournament_match_id: str | None = None
     role_turn_wrestler_id: str | None = None
     role_turn_to: str | None = None
+
+
+class TournamentCreateRequest(BaseModel):
+    belt_id: str
+    entrant_ids: list[str]
+    method: str = "single_elimination"
+    name: str | None = None
+
+
+@app.post("/tournaments")
+def tournaments_create(request: TournamentCreateRequest):
+    from .tournaments import create_tournament
+    return perform(lambda s: create_tournament(
+        s, request.belt_id, request.entrant_ids, request.method,request.name))
+
+
+@app.get("/tournaments")
+def tournaments_list():
+    with service.lock:
+        from .tournaments import pending_matches
+        return {"tournaments":list(service.state.tournaments.values()),
+                "pending_matches":pending_matches(service.state)}
 
 
 class BookShowRequest(BaseModel):
@@ -528,6 +553,8 @@ def ui_state():
                           for w in state.wrestlers.values()],
             'storylines': [asdict(s) for s in state.storylines.values()],
             'championships': list(__import__('wrestling_sim.championships',fromlist=['ensure_championships']).ensure_championships(state).values()),
+            'tournaments': list(state.tournaments.values()),
+            'tournament_matches': __import__('wrestling_sim.tournaments',fromlist=['pending_matches']).pending_matches(state),
             'shows': [asdict(s) for s in state.shows.values()],
             'finance': state.financial_history[-24:],
             'news': state.news[-25:],
