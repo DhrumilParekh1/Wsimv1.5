@@ -83,3 +83,25 @@ def test_direct_three_and_four_way_title_rounds(tmp_path):
     men=[w.id for w in state.wrestlers.values() if w.company_id=="player" and w.division=="men"][:4]
     t2=create_tournament(state,"men_intercontinental",men,"fatal_four_way")
     assert t2["rounds"][0][0]["match_format"]=="fatal_four_way"
+
+
+def test_http_create_and_display_tournament_fixtures(tmp_path,monkeypatch):
+    from fastapi.testclient import TestClient
+    from wrestling_sim.api import app,service
+    state=build_universe(tmp_path/"source2.db",add_independents=False)
+    state.championships["men_world"]["holder_id"]=None
+    monkeypatch.setattr(service,"state",state)
+    monkeypatch.setattr(service,"save",lambda:None)
+    men=[w.id for w in state.wrestlers.values() if w.company_id=="player" and w.division=="men"][:4]
+    client=TestClient(app)
+    response=client.post("/tournaments",json={"belt_id":"men_world","entrant_ids":men,"method":"single_elimination"})
+    assert response.status_code==200, response.text
+    data=response.json()
+    assert data["belt_id"]=="men_world"
+    listed=client.get("/tournaments")
+    assert listed.status_code==200
+    assert listed.json()["pending_matches"][0]["participants"]==men[:2]
+    browser=client.get("/ui/state")
+    assert browser.status_code==200
+    assert browser.json()["tournaments"][0]["id"]==data["id"]
+    assert len(browser.json()["tournament_matches"])==2
