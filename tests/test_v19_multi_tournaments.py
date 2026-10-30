@@ -115,7 +115,7 @@ def test_direct_battle_royale_crowns_vacant_belt_and_survives_save(tmp_path):
                   match_styles=["balanced","power"],tournament_id=comp["id"],
                   tournament_match_id=fixture["id"])
     men=entrants(state,"men",2)
-    card=[match,Segment("promo",men,40,"Men's Direction",storyline_id="real-men"),
+    card=[match,Segment("promo",men,40,"Men's Direction"),
           Segment("promo",[women[0]],30,"Inaugural Preview")]
     show=book_show(state,"Crowning Night",card,120)
     report=simulate_show(state,show.id)
