@@ -47,6 +47,7 @@ def book_show(state: GameState, name: str, segments: list[Segment], duration: in
     if estimated_marketing > state.player_company.money:
         raise ValueError('Insufficient funds for planned advertising/promotion')
     match_appearances = set()
+    tournament_fixtures=set()
     storyline_slots: dict[str, int] = {}
     featured_divisions: set[str] = set()
     for segment in segments:
@@ -106,6 +107,8 @@ def book_show(state: GameState, name: str, segments: list[Segment], duration: in
                 if not any((item.get("winner")==segment.wrestler_ids[0])==(segment.promo_topic=="recent_win")
                            for item in recent[-8:]):
                     raise ValueError("This promo topic requires a recorded matching win or defeat.")
+        from .tournaments import validate_tournament_segment
+        validate_tournament_segment(state,segment,tournament_fixtures)
         check_title_match(state,segment)
         if segment.kind == "match":
             if match_appearances.intersection(segment.wrestler_ids):
@@ -160,6 +163,9 @@ def simulate_show(state: GameState, show_id: str) -> dict:
     for segment in show.segments:
         outcome = simulate_segment(state, segment, rng, crowd_fatigue)
         results.append(outcome)
+        if segment.tournament_id:
+            from .tournaments import record_result
+            record_result(state,segment,outcome,show.id)
         if segment.championship_id:
             title_result=settle_title_match(state,segment,outcome,state.week)
             if title_result:
