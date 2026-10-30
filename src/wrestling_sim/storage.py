@@ -115,6 +115,7 @@ def restore_game(data: dict) -> GameState:
         memories=data.get('memories', []),
         narrative_alerts=data.get('narrative_alerts', []),
         championships=data.get('championships', {}),
+        tournaments=data.get('tournaments', {}),
         chemistry=data.get('chemistry', {}),
         talent_appearances=data.get('talent_appearances', {}),
         talent_concerns=data.get('talent_concerns', []),
