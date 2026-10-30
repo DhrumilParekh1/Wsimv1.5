@@ -149,3 +149,20 @@ def test_duplicate_or_wrong_fixture_is_rejected(tmp_path):
                       tournament_match_id=m["id"])
     with pytest.raises(ValueError,match="participants"):
         validate_tournament_segment(state,unrelated)
+
+
+def test_featured_eliminations_appear_late_in_chosen_order(tmp_path):
+    state=world(tmp_path)
+    ids=entrants(state,count=8)
+    # Important booked elimination moments should occur only after other exits.
+    seg=Segment("match",ids,30,"Booked elimination moments",
+                match_format="battle_royale",planned_winner_id=ids[0],
+                featured_eliminations=[ids[3],ids[5]],
+                match_styles=["balanced","power"])
+    details=simulate_segment(state,seg,random.Random(13),0)["eliminations"]
+    order=[item["wrestler_id"] for item in details]
+    assert order[-2:]==[ids[3],ids[5]]
+    assert ids[0] not in order
+    with pytest.raises(ValueError,match="Featured"):
+        Segment("match",ids,30,"Bad elimination booking",match_format="battle_royale",
+                planned_winner_id=ids[0],featured_eliminations=[ids[0]])
