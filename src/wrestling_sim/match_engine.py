@@ -115,14 +115,14 @@ def match_profile(state: GameState, segment: Segment, story) -> dict:
     elif winner_name:
         ending = f'{winner_name} wins decisively after the final exchange.'
     else:
-        ending = 'The two competitors deliver the planned finish without a designated victor.'
+        ending = 'The competitors reach the planned finish.'
     openings = {
-        'balanced': 'Both competitors mix holds, counters and moments of spectacle.',
+        'balanced': 'The competitors mix holds, counters and moments of spectacle.',
         'technical': 'The match begins with careful holds and technical counters.',
         'high_flying': 'The pace rises quickly as agile sequences draw attention.',
         'power': 'The competitors rely on power and imposing ring presence.',
         'brawl': 'A heated, physical contest keeps the pace unpredictable.',
-        'storytelling': 'Every counter and pause refers back to the rivalry between them.',
+        'storytelling': 'Every counter and pause adds to the match narrative.',
     }
     middle = ('The pacing remains controlled, keeping the audience focused.' if segment.intensity == 'measured'
               else 'The middle portion builds to a series of well-timed reversals.' if segment.intensity == 'standard'
