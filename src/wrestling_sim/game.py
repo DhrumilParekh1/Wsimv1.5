@@ -299,9 +299,14 @@ def simulate_show(state: GameState, show_id: str) -> dict:
     finances['promotion_spend']=promotion_cost
     finances['event_net']-=promotion_cost
     state.player_company.money-=promotion_cost
-    title_bouts=[s for s in show.segments if s.championship_id]
+    # Crowning a vacant title through a tournament final draws title-match
+    # interest even though the semi-finals have no championship_id.
+    title_bouts=[(seg,result) for seg,result in zip(show.segments,results)
+                 if seg.championship_id or result.get('championship')]
     if title_bouts:
-        prestige=sum(state.championships[s.championship_id]['prestige'] for s in title_bouts)/len(title_bouts)
+        prestige=sum(state.championships[
+            seg.championship_id or result['championship']['belt_id']
+        ]['prestige'] for seg,result in title_bouts)/len(title_bouts)
         uplift=int(finances['streaming']*(.08+len(title_bouts)*.035)*prestige/100)
         finances['title_interest_revenue']=uplift
         finances['event_net']+=uplift
