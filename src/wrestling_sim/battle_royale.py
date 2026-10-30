@@ -24,6 +24,12 @@ def royale_highlights(state,segment,rng:random.Random):
         # Elimination selection is probabilistic but excludes the booked winner.
         # More exhausted wrestlers and wrestlers at the ropes are more vulnerable.
         threatened=[wid for wid in active if wid!=winner]
+        # Optional player-directed late eliminations: finish non-featured
+        # entrants first, then preserve the requested spotlight exit order.
+        special=[wid for wid in segment.featured_eliminations if wid in threatened]
+        ordinary=[wid for wid in threatened if wid not in special]
+        if ordinary:threatened=ordinary
+        elif special:threatened=special[:1]
         weights=[.2+(100-endurance[wid])*.025+positioning[wid]*1.3 for wid in threatened]
         target=rng.choices(threatened,weights=weights,k=1)[0]
         opponents=[wid for wid in active if wid!=target]
