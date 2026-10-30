@@ -146,6 +146,7 @@ class Segment:
     match_format: str = "singles"  # singles/triple_threat/fatal_four_way/battle_royale
     tournament_id: str | None = None
     tournament_match_id: str | None = None
+    featured_eliminations: list[str] = field(default_factory=list)  # named late Battle Royale eliminations
 
     def __post_init__(self) -> None:
         if not self.title.strip():
@@ -182,6 +183,12 @@ class Segment:
                     ("clean",) if self.match_format=="battle_royale"
                     else ("clean","flash_pin","interference")):
                 raise ValueError("Multi-person matches require a compatible finish")
+        if self.featured_eliminations:
+            if (self.match_format!="battle_royale" or
+                len(self.featured_eliminations)!=len(set(self.featured_eliminations)) or
+                not set(self.featured_eliminations).issubset(self.wrestler_ids) or
+                self.planned_winner_id in self.featured_eliminations):
+                raise ValueError("Featured Battle Royale eliminations must be unique, eligible non-winners")
         if bool(self.tournament_id) != bool(self.tournament_match_id):
             raise ValueError("Tournament identifier and match identifier must be supplied together")
         if self.tournament_id and self.kind!="match":
