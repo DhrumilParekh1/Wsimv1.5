@@ -168,7 +168,13 @@ def simulate_segment(state: GameState, segment: Segment, rng: random.Random,
     if winner and not match:
         summary += f" Booked winner: {state.wrestlers[winner].name}."
     if detailed_match:
-        summary = ' '.join(detailed_match['beats'])
+        if segment.match_format=="singles":
+            summary=' '.join(detailed_match['beats'])
+        else:
+            names=', '.join(w.name for w in wrestlers)
+            format_name=segment.match_format.replace('_',' ')
+            summary=(f"{names} competed in a {segment.duration}-minute {format_name}. "
+                     + detailed_match["highlights"][-1]["text"])
     else:
         nonmatch_highlights=highlights
     if segment.promo_brawl and not match:
