@@ -546,6 +546,27 @@ def _portrait_data(state):
     return result
 
 
+def _portrait_coverage(state,portraits):
+    real=[w for w in state.wrestlers.values()
+          if w.company_id==state.player_company_id and
+          w.id.startswith(("rw_","wd_"))]
+    complete=[w for w in real if w.id in portraits]
+    return {
+        "real_wrestlers":len(real),
+        "licensed_portraits":len(complete),
+        "unavailable":len(real)-len(complete),
+        "missing_names":[w.name for w in real if w.id not in portraits],
+        "note":"Only source-verified, licensed Wikimedia Commons images are accepted. Other portraits use illustrations."
+    }
+
+
+@app.get('/ui/portrait-status')
+def ui_portrait_status():
+    """Explain why player-roster photo coverage is incomplete; no network."""
+    with service.lock:
+        return _portrait_coverage(service.state,_portrait_data(service.state))
+
+
 @app.get('/ui/state')
 def ui_state():
     with service.lock:
@@ -557,6 +578,7 @@ def ui_state():
                          if item.get("type")=="real_roster_provenance"}
         return {
             'setup_eligible': __import__('wrestling_sim.company_creation',fromlist=['is_eligible_for_company_creation']).is_eligible_for_company_creation(state),
+            'portrait_coverage':_portrait_coverage(state,portraits),
             'year': state.year, 'week': state.week,
             'company': {**asdict(state.player_company), 'prestige': __import__('wrestling_sim.industry',fromlist=['company_prestige']).company_prestige(state,state.player_company_id)},
             'company_prestige': {cid:__import__('wrestling_sim.industry',fromlist=['company_prestige']).company_prestige(state,cid) for cid in state.companies},
