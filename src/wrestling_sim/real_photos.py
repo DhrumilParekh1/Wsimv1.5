@@ -269,6 +269,11 @@ def sync_photos(path,limit=100,priority_ids=None,commons_search=False):
                 details.update(_batch_metadata(part))
             for qid,filename in file_by_id.items():
                 info=details.get(filename) or details.get(filename.replace("_"," "))
+                if not info and commons_search:
+                    name=next((name for rowid,name in batch if rowid==qid),None)
+                    if name:
+                        _progress(f"Commons photo search for {name}: P18 file is unavailable or unlicensed")
+                        info=_commons_search_candidate(name)
                 if not info:
                     skipped+=1
                     continue
