@@ -55,3 +55,36 @@ def test_fresh_html_uses_versioned_assets_and_no_cache():
     assert 'app.js?v=1.11.0' in response.text
     assert 'styles.css?v=1.11.0' in response.text
     assert TestClient(app).get("/ui/build-info").json()["frontend_version"]=="1.11.0"
+
+
+def test_backfill_existing_indie_campaign_once_with_backup(tmp_path):
+    from wrestling_sim.generated_roster import upgrade_campaign_roster
+    state=build_universe(tmp_path/"people2.db",add_independents=False)
+    pick_m=next(w.id for w in state.wrestlers.values() if w.company_id=="player" and w.division=="men")
+    pick_w=next(w.id for w in state.wrestlers.values() if w.company_id=="player" and w.division=="women")
+    owned=create_company(state,"Older Founding Save","indie",[pick_m],[pick_w])
+    # Emulate a previously created save that only had two drafted wrestlers.
+    for wid in [wid for wid in owned.wrestlers if wid.startswith("gen_")]:
+        del owned.wrestlers[wid]
+    owned.player_company.roster_limit=8
+    path=tmp_path/"old.db"
+    save_database(owned,path)
+    upgraded=upgrade_campaign_roster(path)
+    assert upgraded["added"]==8
+    assert Path(upgraded["backup"]).exists()
+    loaded=load_database(path)
+    assert len([w for w in loaded.wrestlers.values() if w.company_id=="player"])==10
+    assert loaded.player_company.roster_limit>=10
+    assert upgrade_campaign_roster(path)["added"]==0
+
+
+def test_limited_licensed_photo_status_is_exposed_by_api(tmp_path,monkeypatch):
+    from wrestling_sim.api import app,service
+    state=build_universe(tmp_path/"data.db",add_independents=False)
+    monkeypatch.setattr(service,"state",state)
+    response=TestClient(app).get("/ui/portrait-status")
+    assert response.status_code==200
+    payload=response.json()
+    assert payload["real_wrestlers"]>=1
+    assert payload["licensed_portraits"]>=0
+    assert payload["unavailable"]==len(payload["missing_names"])
