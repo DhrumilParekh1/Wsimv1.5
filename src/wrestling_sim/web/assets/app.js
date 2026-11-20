@@ -98,6 +98,8 @@ function rosterView(){
    &&(model.filter==='all'||w.role===model.filter)
    &&(model.division==='all'||w.division===model.division)).sort((a,b)=>cardTiers.indexOf(a.card_tier)-cardTiers.indexOf(b.card_tier)||b.ratings.current_ability-a.ratings.current_ability);
  return `${heading('LOCKER ROOM','Roster Management','Men’s and women’s divisions have independent match bookings and storylines.',`<span class="pill">${roster().length}/${model.data.company.roster_limit} signed</span>`)}
+ ${model.data.portrait_coverage?.real_wrestlers?
+   `<p class="micro" style="margin:10px 0 12px">Licensed wrestler photo records: ${model.data.portrait_coverage.licensed_portraits} of ${model.data.portrait_coverage.real_wrestlers}. Missing pictures retain illustrations. <a href="/ui/portrait-status" target="_blank" rel="noopener">View missing photos</a></p>`:''}
  <div class="filters"><input id="roster-search" class="input search" aria-label="Find a wrestler" placeholder="Search your roster..." value="${safe(model.search)}">
  <select id="division-filter" class="select" style="max-width:160px"><option value="all">Both divisions</option>${['men','women'].map(x=>`<option value="${x}" ${model.division===x?'selected':''}>${x==='men'?'Men':'Women'}</option>`).join('')}</select>
  <select id="roster-filter" class="select" style="max-width:160px"><option value="all">All alignments</option>${['face','heel','tweener'].map(x=>`<option value="${x}" ${model.filter===x?'selected':''}>${x}</option>`).join('')}</select></div>
