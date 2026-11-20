@@ -90,3 +90,67 @@ def generate_rookies(state,tier,company_name):
                 raise AssertionError(f"Generated rookie rating out of realistic midrange: {ability}")
             rookies.append(rookie)
     return rookies
+
+
+def upgrade_campaign_roster(save_path):
+    """Opt-in, backed-up upgrade for a previously founded company.
+
+    Do not add duplicates, never silently reroll existing rookies, and do
+    not modify a non-custom or a pre-foundation save.
+    """
+    import shutil
+    from pathlib import Path
+    from .database import load_database, save_database
+    from .company_creation import TIERS
+    path=Path(save_path)
+    if not path.is_file() or path.suffix.lower()!=".db":
+        raise FileNotFoundError("Provide an existing .db RINGSIDE campaign save")
+    state=load_database(path)
+    foundations=[entry for entry in state.campaigns if entry.get("type")=="company_foundation"]
+    if not foundations:
+        raise ValueError("Found a new promotion in the game before adding generated rookies")
+    tier=foundations[-1].get("tier")
+    if tier not in COUNTS:
+        raise ValueError("Unrecognized founding company tier")
+    generated=[w for w in state.wrestlers.values()
+               if w.id.startswith("gen_") and w.company_id=="player"]
+    expected=sum(COUNTS[tier])
+    if len(generated)==expected:
+        return {"added":0,"roster_size":sum(w.company_id=="player"
+                                           for w in state.wrestlers.values()),
+                "note":"All generated wrestlers already exist; nothing changed"}
+    if generated:
+        raise ValueError("Partial generated roster found; refusing to reroll or duplicate workers")
+    candidates=generate_rookies(state,tier,state.player_company.name)
+    if any(w.id in state.wrestlers for w in candidates):
+        raise ValueError("Generated IDs already exist; refusing to overwrite")
+    backup=path.with_name(path.name+".before-rookies.bak")
+    if backup.exists():
+        raise FileExistsError("Backup already exists; refusing overwrite: "+str(backup))
+    shutil.copy2(path,backup)
+    for wrestler in candidates:
+        state.wrestlers[wrestler.id]=wrestler
+    state.player_company.roster_limit=max(
+        state.player_company.roster_limit,
+        TIERS[tier]["roster_limit"],
+        sum(w.company_id=="player" for w in state.wrestlers.values()))
+    state.activity_log.append({
+        "type":"generated_roster_added",
+        "tier":tier,"ids":[w.id for w in candidates],
+        "source":"fictional_game_generation","year":state.year,"week":state.week})
+    state.news.append(f"{len(candidates)} original developmental wrestlers have signed with {state.player_company.name}.")
+    save_database(state,path)
+    return {"added":len(candidates),"total_men":COUNTS[tier][0],
+            "total_women":COUNTS[tier][1],"backup":str(backup),
+            "roster_size":sum(w.company_id=="player" for w in state.wrestlers.values()),
+            "save":str(path)}
+
+if __name__=="__main__":
+    import argparse,json
+    parser=argparse.ArgumentParser(description="Backfill generated rookies into an existing player-owned campaign")
+    parser.add_argument("--save",required=True,help="Existing .db game save")
+    args=parser.parse_args()
+    try:
+        print(json.dumps(upgrade_campaign_roster(args.save),indent=2))
+    except (ValueError,FileNotFoundError,FileExistsError) as exc:
+        parser.exit(1,"RINGSIDE generated roster: "+str(exc)+"\n")
