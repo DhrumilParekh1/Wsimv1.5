@@ -105,6 +105,8 @@ def _make_member(person_id, name, division, employer, biographical, ordinal):
             w.height_cm=h
         if isinstance(weight,(int,float)) and 45<=weight<=260:
             w.weight_kg=weight
+    from .scouting_data import apply_scouting_to_wrestler
+    apply_scouting_to_wrestler(w,force=True)
     return w
 
 def build_universe(catalogue="data/real_wrestlers.db", seed=2026, add_independents=True):
@@ -145,18 +147,13 @@ def build_universe(catalogue="data/real_wrestlers.db", seed=2026, add_independen
     for company_id, detail in OFFICIAL_ROSTERS.items():
         company=state.companies[company_id]
         company.name=detail["name"]
-        company.roster_limit=30
-        # Explicitly invented economy values; not claims of audited revenue.
-        scenario={
-            "player":(2500000,75,72),
-            "rival":(1800000,68,65),
-            "circuit":(950000,52,49),
-            "royal":(750000,45,46),
-        }
-        company.money,company.popularity,company.sponsor_interest=scenario[company_id]
-        company.viewership=max(1000,round(25000+company.popularity*4500))
-        # Financial strength is an intentionally synthetic starting scenario,
-        # never a claim about real-world finances, contract or gate receipts.
+        company.roster_limit=50
+        from .realistic_economy import apply_company_benchmark
+        benchmark=apply_company_benchmark(company,company_id)
+        # Audiences are estimates calibrated against named TV shows, NOT
+        # claims about all company distribution or literal corporate cash.
+        provenance.append({"type":"company_audience_baseline",
+                           "company_id":company_id,**benchmark})
         for division in ("men","women"):
             for ordinal,name in enumerate(detail[division]):
                 slug=normalize_name(name)
@@ -167,6 +164,10 @@ def build_universe(catalogue="data/real_wrestlers.db", seed=2026, add_independen
                 wrestler=_make_member(wid,name,division,company_id,identity,ordinal)
                 state.wrestlers[wid]=wrestler
                 ids_by_name[slug]=wid
+                provenance.append({"type":"scouting_method","wrestler_id":wid,
+                                   "model":"editorial_2026_11_v1",
+                                   "public_listing":detail["source"],
+                                   "scores_are_game_estimates":True})
                 provenance.append({"type":"real_roster_provenance",
                     "wrestler_id":wid, "source_name":name,
                     "listed_by":detail["name"],"source_url":detail["source"],
