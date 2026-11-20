@@ -18,3 +18,28 @@ jobs:
         run: node --check src/wrestling_sim/web/assets/app.js
       - name: Run full test suite
         run: python -m pytest -q --tb=short
+      - name: Build Docker preview and verify no-save first-run startup
+        run: |
+          docker build -t ringside:ci .
+          docker run -d --name ringside-ci -p 127.0.0.1:18080:8000 ringside:ci
+          python - <<'PY'
+          import json,time
+          from urllib.request import urlopen
+          base="http://127.0.0.1:18080"
+          for attempt in range(30):
+              try:
+                  with urlopen(base+"/health",timeout=4) as response:
+                      assert response.status==200
+                  break
+              except Exception:
+                  if attempt==29:raise
+                  time.sleep(2)
+          with urlopen(base+"/ui/state",timeout=15) as response:
+              data=json.load(response)
+          assert data["setup_eligible"] is True
+          assert len(data["wrestlers"])>=80
+          with urlopen(base+"/assets/welcome-arena.svg",timeout=5) as response:
+              assert response.status==200
+          print("Docker preview initialized without an existing save")
+          PY
+          docker rm -f ringside-ci

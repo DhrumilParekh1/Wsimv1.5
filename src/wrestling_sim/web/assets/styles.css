@@ -141,3 +141,24 @@
 .promo-dialogue{background:#f3f1f9;border:1px solid #ded8eb;border-radius:12px;padding:12px;margin:10px 0}
 .promo-dialogue p{white-space:pre-line;line-height:1.7;color:#433d57}
 @media(max-width:600px){.profile-responsive{flex-wrap:wrap}.profile-responsive .profile-info{flex-basis:100%}.rival-actions{grid-template-columns:1fr}}
+
+/* V1.10 — full-screen interactive arrival */
+.welcome-screen{position:relative;min-height:100svh;background:#080f1d;color:#fff;display:flex;flex-direction:column;isolation:isolate;overflow:hidden}
+.welcome-scene{position:absolute;inset:0;z-index:-3;background:#080f1d url('/assets/welcome-arena.svg') center 58%/cover no-repeat;transform:scale(1.02)}
+.welcome-shade{position:absolute;inset:0;z-index:-2;background:linear-gradient(92deg,rgba(4,11,25,.95) 0%,rgba(6,14,31,.90) 31%,rgba(7,16,31,.43) 72%,rgba(5,11,25,.50) 100%),linear-gradient(0deg,rgba(5,9,20,.96),transparent 28%)}
+.welcome-top,.welcome-bottom{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:35px clamp(24px,6vw,104px);z-index:1}
+.welcome-logo{font-family:Outfit,sans-serif;font-size:25px;font-weight:900;letter-spacing:.17em;display:flex;align-items:center;gap:11px}
+.welcome-star{background:linear-gradient(130deg,#ffad78,#e85557);color:#111c2a;display:grid;place-items:center;width:43px;height:43px;border-radius:11px;font-size:22px}
+.welcome-edition,.welcome-bottom{font-size:11px;letter-spacing:.17em;color:#c2c8d2;font-weight:700}
+.welcome-hero{margin:auto 0;max-width:950px;padding:58px clamp(24px,8vw,138px) 70px}
+.welcome-eyebrow{font-size:12px;font-weight:800;letter-spacing:.27em;color:#ef9e79;margin-bottom:24px}
+.welcome-hero h1{font-family:Outfit,sans-serif;font-size:clamp(46px,6.8vw,105px);font-weight:900;letter-spacing:-.055em;line-height:1.03;max-width:1100px;text-wrap:balance}
+.welcome-hero h1 em{font-style:normal;color:#f39978}
+.welcome-description{font-size:clamp(16px,1.5vw,20px);line-height:1.75;max-width:620px;color:#ccd5e2;margin:27px 0 30px}
+.welcome-enter{display:inline-flex;align-items:center;justify-content:center;gap:30px;padding:18px 28px;border:0;border-radius:11px;background:#ed705c;color:#111923;font-family:Outfit,sans-serif;font-weight:900;letter-spacing:.06em;font-size:16px;box-shadow:0 14px 32px rgba(227,89,71,.21);transition:transform .2s ease,background .2s ease}
+.welcome-enter:hover{transform:translateY(-3px);background:#ff9177}
+.welcome-enter span{font-size:24px;line-height:1}
+.welcome-detail{font-size:12px;color:#b9c9d8;letter-spacing:.08em;margin-top:21px}
+.welcome-bottom{border-top:1px solid #ffffff1c}
+@media(max-width:700px){.welcome-top,.welcome-bottom{padding:24px}.welcome-top{align-items:flex-start}.welcome-edition{font-size:9px}.welcome-hero{padding:80px 24px}.welcome-hero h1{font-size:clamp(40px,11vw,74px)}.welcome-bottom{flex-direction:column;align-items:flex-start;font-size:9px}}
+@media(prefers-reduced-motion:reduce){.welcome-enter{transition:none}}

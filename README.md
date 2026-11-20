@@ -1,3 +1,18 @@
+# RINGSIDE — Wrestling Promotion Simulator (V1.10)
+
+**Latest development:** An original welcome screen, custom-company onboarding, sourced real-name wrestler rosters with differentiated editorial game-scouting ratings, licensed Wikimedia Commons image importing, championship tournaments, Triple Threat/Fatal Four-Way/Battle Royale matches, and offline automatic first-run initialization for new saves. The official version is V1.10; prior V1.3 notes below are historical.
+
+To start a new Windows campaign from the repository folder:
+
+    py -m pip install -e ".[dev]"
+    py -m wrestling_sim.cli --save saves/V110_Fresh.db web
+
+For photo synchronization and an existing-save ratings upgrade, and for private Docker-preview deployment, see **docs/V110_ONBOARDING_DATA_DEPLOYMENT.md**. For multi-person match documentation, see **docs/V19_MULTI_MATCH_TOURNAMENTS.md**.
+
+**Deployment restriction:** This is currently a single-player server without per-user authentication. Do not expose it directly as a public multi-user website until account isolation, authorization and save protection are implemented.
+
+---
+
 # RINGSIDE V1.3 — Management, Narrative & UI Repairs
 
 **Release scope:** Implements the consolidated management-and-economy worklog while deliberately retaining **singles matches only** and **existing stipulations**. Tag-team matches, multi-person feuds/matches, additional match stipulations and tag-team titles remain deferred.

@@ -191,6 +191,9 @@ def main() -> None:
         import webbrowser
         import uvicorn
         os.environ['WRESTLING_SIM_SAVE'] = args.save
+        # Fresh browser users start with the real roster and setup wizard.
+        # Previously saved campaigns are loaded unchanged.
+        os.environ.setdefault('RINGSIDE_START_MODE', 'real')
         url = f'http://127.0.0.1:{args.port}/'
         print(f'Ringside web app: {url}')
         print('Press Ctrl+C to stop the server. Your game autosaves after actions.')

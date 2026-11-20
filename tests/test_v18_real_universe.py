@@ -48,7 +48,9 @@ def test_campaign_has_four_real_promotions_balanced_divisions(tmp_path):
         assert sum(w.company_id==cid and w.division=="women" for w in state.wrestlers.values())>=2
     cody=state.wrestlers["rw_codyrhodes"]
     assert cody.height_cm==180
-    assert cody.attributes["workrate"]==12.5
+    assert cody.attributes["workrate"] >= 19
+    assert cody.attributes["workrate"] != 12.5
+    assert cody.attributes["mic_skills"] >= 20
     assert not any(w.id=="steel" for w in state.wrestlers.values())
     assert state.championships["men_world"]["holder_id"]=="rw_codyrhodes"
     assert all(all(wid in state.wrestlers for wid in s.wrestler_ids)
