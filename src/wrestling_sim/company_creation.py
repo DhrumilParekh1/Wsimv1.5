@@ -5,16 +5,16 @@ game transfers, not an assertion of real wrestler availability.
 """
 from __future__ import annotations
 import copy
-from .models import Company, Storyline
+from .models import Company
 
 TIERS={
     "indie":{"money":75000,"popularity":8,"fan_trust":45,
              "sponsor_interest":12,"weekly_fixed_costs":650,
-             "venue_capacity":160,"ticket_price":15,"roster_limit":8,
+             "venue_capacity":160,"ticket_price":15,"roster_limit":14,
              "show_minutes":45,"picks":1,"viewership":2500,"prestige_history":18},
     "startup":{"money":400000,"popularity":22,"fan_trust":48,
                "sponsor_interest":28,"weekly_fixed_costs":2200,
-               "venue_capacity":600,"ticket_price":25,"roster_limit":14,
+               "venue_capacity":600,"ticket_price":25,"roster_limit":20,
                "show_minutes":60,"picks":2,"viewership":18000,"prestige_history":29},
     "juggernaut":{"money":2500000,"popularity":45,"fan_trust":55,
                   "sponsor_interest":60,"weekly_fixed_costs":7000,
@@ -78,15 +78,17 @@ def create_company(state, name: str, tier: str, men: list[str], women: list[str]
         w.contract_weeks=52
         w.morale=17
         w.owner_relationship=15
+    # A newly founded company has no pre-arranged rivalries. The owner chooses
+    # how to build them after the initial roster is populated.
     new.storylines={}
-    from .audience import ensure_expectations
-    if count>=2:
-        for division,selected in (("men",men),("women",women)):
-            sid="founding-"+division
-            new.storylines[sid]=Storyline(id=sid,title=f"{name}: {division.title()} Opening Rivalry",
-                                         wrestler_ids=selected[:2],hype=30,
-                                         fan_investment=35,coherence=65)
-            ensure_expectations(new,new.storylines[sid])
+    from .generated_roster import generate_rookies,COUNTS
+    generated=generate_rookies(new,tier,name)
+    for rookie in generated:
+        if rookie.id in new.wrestlers:
+            raise ValueError("A generated wrestler ID already exists")
+        new.wrestlers[rookie.id]=rookie
+    if sum(w.company_id=="player" for w in new.wrestlers.values())>new.player_company.roster_limit:
+        raise ValueError("Starting roster exceeds the chosen company's capacity")
     for cid,belt in new.championships.items():
         belt["company_id"]="player"
         belt["name"]=f"{name} "+("Women's World Championship" if cid=="women_world" else
@@ -104,12 +106,18 @@ def create_company(state, name: str, tier: str, men: list[str], women: list[str]
     new.shows={}
     new.assignments={}
     new.recruitment_interest=[]
-    new.news=[f"{name} has entered the wrestling industry as a {tier} company. Draft complete."]
+    new.news=[f"{name} has entered the wrestling industry as a {tier} company.",
+              "Creative Department: Build your first storylines. At least one men's and one women's story is recommended before your first non-tournament show.",
+              f"{len(generated)} fictional developmental wrestlers have joined your company after the main draft."]
     new.activity_log.append({"type":"company_foundation","tier":tier,
                              "name":name,"men":list(men),"women":list(women),
+                             "generated_wrestler_ids":[w.id for w in generated],
+                             "generated_divisions":{"men":COUNTS[tier][0],"women":COUNTS[tier][1]},
                              "starting_cash":config["money"]})
     new.campaigns.append({"type":"company_foundation","tier":tier,
-                          "name":name,"draft_picks":picks,"year":new.year,"week":new.week})
+                          "name":name,"draft_picks":picks,
+                          "generated_wrestlers":[w.id for w in generated],
+                          "year":new.year,"week":new.week})
     for coach in new.coaches.values():
         if coach.get("company_id")=="player":coach["company_id"]="wwe"
     for scout in new.scouts.values():

@@ -21,7 +21,7 @@ from .sponsors import sponsor_offers, respond_sponsor, terminate_sponsor
 from .auto_narrative import auto_show, auto_dialogue
 from .narrative import config as ollama_config, status as ollama_status, rewrite_social, segment_recap, enhance_dialogue, enhance_highlights
 
-app = FastAPI(title="Fictional Wrestling Promotion Simulator API", version="1.10.0")
+app = FastAPI(title="Fictional Wrestling Promotion Simulator API", version="1.11.0")
 service = GameService(os.getenv('WRESTLING_SIM_SAVE', 'saves/game.db'))
 
 
@@ -346,6 +346,15 @@ def health():
     return {"status": "ok", "version": app.version}
 
 
+@app.get('/ui/build-info')
+def build_info():
+    """Useful when the browser is attached to a stale or different server."""
+    return {'api_version':app.version,'frontend_version':'1.11.0',
+            'save_path':str(service.path),
+            'fresh_setup_eligible':__import__(
+                'wrestling_sim.company_creation',fromlist=['is_eligible_for_company_creation']
+            ).is_eligible_for_company_creation(service.state)}
+
 @app.post('/game/new')
 def game_new(request: NewGameRequest):
     service.reset(request.seed)
@@ -459,7 +468,10 @@ app.mount('/assets', StaticFiles(directory=WEB_DIR / 'assets'), name='assets')
 
 @app.get('/', include_in_schema=False)
 def homepage():
-    return FileResponse(WEB_DIR / 'index.html')
+    # Never cache the HTML shell: otherwise a previous app.js build can keep
+    # showing the old company-name template after the server was updated.
+    return FileResponse(WEB_DIR / 'index.html',headers={
+        'Cache-Control':'no-store, max-age=0','Pragma':'no-cache'})
 
 
 class CompanySetupRequest(BaseModel):
@@ -493,7 +505,9 @@ def ui_setup_company(request: CompanySetupRequest):
                 raise
             return {'company':candidate.player_company.name,
                     'tier':request.tier,
-                    'roster_size':len(request.men)+len(request.women)}
+                    'roster_size':sum(w.company_id=='player' for w in candidate.wrestlers.values()),
+                    'generated_count':len([w for w in candidate.wrestlers.values()
+                                           if w.company_id=='player' and w.id.startswith('gen_')])}
         except ValueError as exc:
             raise HTTPException(status_code=400,detail=str(exc)) from exc
 
@@ -532,6 +546,27 @@ def _portrait_data(state):
     return result
 
 
+def _portrait_coverage(state,portraits):
+    real=[w for w in state.wrestlers.values()
+          if w.company_id==state.player_company_id and
+          w.id.startswith(("rw_","wd_"))]
+    complete=[w for w in real if w.id in portraits]
+    return {
+        "real_wrestlers":len(real),
+        "licensed_portraits":len(complete),
+        "unavailable":len(real)-len(complete),
+        "missing_names":[w.name for w in real if w.id not in portraits],
+        "note":"Only source-verified, licensed Wikimedia Commons images are accepted. Other portraits use illustrations."
+    }
+
+
+@app.get('/ui/portrait-status')
+def ui_portrait_status():
+    """Explain why player-roster photo coverage is incomplete; no network."""
+    with service.lock:
+        return _portrait_coverage(service.state,_portrait_data(service.state))
+
+
 @app.get('/ui/state')
 def ui_state():
     with service.lock:
@@ -543,6 +578,7 @@ def ui_state():
                          if item.get("type")=="real_roster_provenance"}
         return {
             'setup_eligible': __import__('wrestling_sim.company_creation',fromlist=['is_eligible_for_company_creation']).is_eligible_for_company_creation(state),
+            'portrait_coverage':_portrait_coverage(state,portraits),
             'year': state.year, 'week': state.week,
             'company': {**asdict(state.player_company), 'prestige': __import__('wrestling_sim.industry',fromlist=['company_prestige']).company_prestige(state,state.player_company_id)},
             'company_prestige': {cid:__import__('wrestling_sim.industry',fromlist=['company_prestige']).company_prestige(state,cid) for cid in state.companies},
