@@ -73,6 +73,10 @@ def _from_imageinfo(entry):
     terms=(short+" "+usage).lower()
     if not any(token in terms for token in PERMITTED):
         return None
+    if any(restriction in terms for restriction in (
+        "noncommercial","non-commercial","by-nc","by-nc-sa",
+        "no derivatives","no-derivatives","by-nd","all rights reserved")):
+        return None
     image=entry.get("thumburl") or entry.get("url") or ""
     page=entry.get("descriptionurl") or ""
     license_url=ext.get("LicenseUrl",{}).get("value","")
