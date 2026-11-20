@@ -11,15 +11,15 @@ TIERS={
     "indie":{"money":75000,"popularity":8,"fan_trust":45,
              "sponsor_interest":12,"weekly_fixed_costs":650,
              "venue_capacity":160,"ticket_price":15,"roster_limit":8,
-             "show_minutes":45,"picks":1},
+             "show_minutes":45,"picks":1,"viewership":2500,"prestige_history":18},
     "startup":{"money":400000,"popularity":22,"fan_trust":48,
                "sponsor_interest":28,"weekly_fixed_costs":2200,
                "venue_capacity":600,"ticket_price":25,"roster_limit":14,
-               "show_minutes":60,"picks":2},
+               "show_minutes":60,"picks":2,"viewership":18000,"prestige_history":29},
     "juggernaut":{"money":2500000,"popularity":45,"fan_trust":55,
                   "sponsor_interest":60,"weekly_fixed_costs":7000,
                   "venue_capacity":2500,"ticket_price":42,"roster_limit":24,
-                  "show_minutes":90,"picks":3},
+                  "show_minutes":90,"picks":3,"viewership":110000,"prestige_history":49},
 }
 
 def is_custom_company(state):
@@ -67,7 +67,8 @@ def create_company(state, name: str, tier: str, men: list[str], women: list[str]
         fan_trust=config["fan_trust"],sponsor_interest=config["sponsor_interest"],
         weekly_fixed_costs=config["weekly_fixed_costs"],
         venue_capacity=config["venue_capacity"],ticket_price=config["ticket_price"],
-        roster_limit=config["roster_limit"],show_minutes=config["show_minutes"])
+        roster_limit=config["roster_limit"],show_minutes=config["show_minutes"],
+        viewership=config["viewership"],prestige_history=config["prestige_history"])
     # None of these are real employment or contract changes: all transfer
     # mechanics are fictional starts to a single-player sandbox scenario.
     for wid in picks:
