@@ -538,6 +538,9 @@ def ui_state():
         state = service.state
         bootstrap_world(state)
         portraits=_portrait_data(state)
+        profile_sources={item.get("wrestler_id"):item
+                         for item in state.activity_log
+                         if item.get("type")=="real_roster_provenance"}
         return {
             'setup_eligible': __import__('wrestling_sim.company_creation',fromlist=['is_eligible_for_company_creation']).is_eligible_for_company_creation(state),
             'year': state.year, 'week': state.week,
@@ -550,7 +553,12 @@ def ui_state():
             'transfer_offers': [o for o in state.transfer_offers if o.get('status')=='pending'],
             'expansion': {kind:__import__('wrestling_sim.industry',fromlist=['expansion_quote']).expansion_quote(state,kind) for kind in ('extra_ppv','more_hours')},
             'companies': [asdict(c) for c in state.companies.values()],
-            'wrestlers': [{**asdict(w), **portraits.get(w.id,{}), 'ratings': {**rating_breakdown(w), 'market_dollars':__import__('wrestling_sim.front_office',fromlist=['monetary_value']).monetary_value(w,state)}}
+            'wrestlers': [{**asdict(w), **portraits.get(w.id,{}),
+                          'real_profile_source':profile_sources.get(w.id,{}).get("source_url"),
+                          'age_source_verified':profile_sources.get(w.id,{}).get("birthdate_source_verified",False),
+                          'ratings_method':"editorial_2026_11_v1" if w.id.startswith("rw_") else
+                                           "game_estimate" if w.id.startswith("wd_") else "fictional",
+                          'ratings': {**rating_breakdown(w), 'market_dollars':__import__('wrestling_sim.front_office',fromlist=['monetary_value']).monetary_value(w,state)}}
                           for w in state.wrestlers.values()],
             'storylines': [asdict(s) for s in state.storylines.values()],
             'championships': list(__import__('wrestling_sim.championships',fromlist=['ensure_championships']).ensure_championships(state).values()),
