@@ -230,6 +230,7 @@ function welcomeView(){
 function companySetupView(){
  const tier=model.companyTier||'startup';
  const picks={indie:1,startup:2,juggernaut:3}[tier]||2;
+ const recruited={indie:[5,3],startup:[6,4],juggernaut:[7,4]}[tier]||[6,4];
  const groups={men:[],women:[]};
  for(const wrestler of model.data.wrestlers){
    if(groups[wrestler.division])groups[wrestler.division].push(wrestler);
@@ -237,7 +238,8 @@ function companySetupView(){
  for(const division of ['men','women'])groups[division].sort((a,b)=>a.name.localeCompare(b.name));
  return '<section class="card" style="max-width:1000px;margin:25px auto;padding:24px">'+
   '<div class="eyebrow">CREATE YOUR WRESTLING COMPANY</div>'+
-  '<h1>Start your own promotion</h1><p>Compete against WWE, AEW, TNA and ROH. Draft wrestlers into your new company. All contracts, budgets and transfers are fictional game rules.</p>'+
+  '<h1>Start your own promotion</h1><p>Compete against WWE, AEW, TNA and ROH. Draft established talent and build your own developmental stars.</p>'+
+  '<div class="eyebrow">YOUR STARTING ROSTER</div><p class="micro" style="margin:8px 0 16px">After confirming the main draft, '+recruited[0]+' fictional men and '+recruited[1]+' fictional women will join automatically with varied mid-tier ratings, original identities and contracts. Every new campaign keeps its generated wrestlers.</p>'+
   '<form id="setup-company-form" class="form-grid">'+
   '<div class="field full"><label>Promotion name</label><input class="input" name="name" id="setup-company-name" required minlength="3" maxlength="55" value="'+safe(model.companyName)+'" placeholder="e.g. Apex Pro Wrestling"></div>'+
   '<div class="field full"><label>Starting level</label><select class="select" id="setup-tier" name="tier">'+
@@ -250,7 +252,7 @@ function companySetupView(){
     Array.from({length:picks},(_,i)=>'<div class="field"><label>Draft pick '+(i+1)+'</label><select class="select" name="draft_'+d+'_'+i+'" required><option value="">Choose a wrestler</option>'+
      groups[d].map(w=>'<option value="'+safe(w.id)+'">'+safe(w.name)+' · '+safe((model.data.companies.find(c=>c.id===w.company_id)||{}).name||'Independent')+'</option>').join('')+
      '</select></div>').join('')+'</div></div>').join('')+
-  '<div class="field full"><p class="micro">Starting championships are vacant. A smaller promotion books shorter weekly shows. Your existing save will be backed up before creating the company.</p>'+
+  '<div class="field full"><p class="micro">Starting championships are vacant. No rivalry is pre-created for you. Your starting save will be backed up before confirming the company.</p>'+
   '<button type="submit" class="btn btn-coral btn-wide">Found company and confirm draft</button></div>'+
   '</form></section>';
 }
@@ -487,7 +489,7 @@ app.addEventListener('submit',async e=>{
   n={indie:1,startup:2,juggernaut:3}[level];
   const get=division=>Array.from({length:n},(_,i)=>form.elements.namedItem('draft_'+division+'_'+i).value);
   await run(()=>request('/ui/setup/company','POST',{name:form.elements.namedItem('name').value,
-      tier:level,men:get('men'),women:get('women')}),'Your new promotion is ready.');
+      tier:level,men:get('men'),women:get('women')}),'Company founded. Your main draft and developmental talent are ready.');
   return;
  }
 e.preventDefault();const form=e.target;if(form.id==='buyout-form'){const f=new FormData(form);const res=await run(()=>request('/ui/talent/buyout','POST',{wrestler_id:f.get('wrestler_id'),proposed_fee:Number(f.get('proposed_fee')),salary_weekly:Number(f.get('salary_weekly')),weeks:Number(f.get('weeks'))}),'Buyout proposal resolved.');if(res)notify(res.accepted?'Transfer agreed.':`Buyout rejected: club ${res.seller_accepted?'accepted':'declined'}, wrestler ${res.wrestler_accepted?'accepted':'declined'}.`,!res.accepted);return;}
