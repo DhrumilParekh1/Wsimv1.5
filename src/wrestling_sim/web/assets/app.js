@@ -64,7 +64,7 @@ function tournamentsView(){
 
 const storyTag=id=>linkedStories(id).length?linkedStories(id).map(s=>`<span class="story-link" data-nav="stories">${safe(s.title)}</span>`).join(''):'<span class="micro">No active storyline</span>';
 const selectStory=()=>`<option value="">No storyline</option>${model.data.storylines.filter(s=>s.stage!=='resolved').map(s=>`<option value="${safe(s.id)}">[${safe(who(s.wrestler_ids[0])?.division||'?')}] ${safe(s.title)}</option>`).join('')}`;
-const model={narrationStatus:null,loading:false,view:'dashboard',data:null,modal:null,draft:[],search:'',filter:'all',division:'all',busy:false,lastResult:null,liveIndex:0,highlightIndex:0,prefill:null,room:null,previousView:'roster',setupDismissed:false,companyTier:'startup',companyName:'My Wrestling Promotion'};
+const model={narrationStatus:null,loading:false,view:'dashboard',data:null,modal:null,draft:[],search:'',filter:'all',division:'all',busy:false,lastResult:null,liveIndex:0,highlightIndex:0,prefill:null,room:null,previousView:'roster',setupDismissed:false,companyTier:'startup',companyName:'',welcomeDismissed:false};
 async function request(url,method='GET',payload){
  const settings={method,headers:{Accept:'application/json'}};
  if(payload!==undefined){settings.headers['Content-Type']='application/json';settings.body=JSON.stringify(payload);}
@@ -212,6 +212,20 @@ function sponsorsView(){const offers=model.data.sponsor_offers||[],deals=model.d
 function socialView(){const posts=(model.data.social_posts||[]).slice().reverse(),latest=posts[0]?.show_id,ai=model.data.ollama||{};return `${heading('THE FANBASE','Fan Social','An automatically narrated fictional fan timeline. Sentiment and outcomes come from the simulation engine.',`<span class="pill">${posts.length} posts</span>`)}
  <section class="card social-controls"><div><strong>Automatic narrative · ${safe(ai.model||'Ollama')}</strong><p class="micro">Local Ollama writes fan posts automatically after each show. The engine fixes audience sentiment first.</p></div></section>
  <div class="social-feed">${posts.map(post=>`<article class="social-post"><div class="social-avatar">${post.sentiment==='positive'?'★':post.sentiment==='negative'?'!':'•'}</div><div><div class="social-meta"><strong>${safe(post.handle)}</strong><span>W${post.week} ${post.year} · ${safe(post.segment)}</span></div><p>${safe(fanPostText(post.text))}</p><div class="social-footer"><span class="sentiment ${safe(post.sentiment)}">${safe(post.sentiment)}</span><span>Segment crowd ${n1(post.crowd)}/100</span>${post.source==='ollama'?'<span>✨ Ollama text</span>':''}</div></div></article>`).join('')||'<div class="card"><div class="empty">Your fan feed starts when you simulate the first show.</div></div>'}</div>`;}
+function welcomeView(){
+ return '<main class="welcome-screen" role="main">'+
+  '<div class="welcome-scene" aria-hidden="true"></div>'+
+  '<div class="welcome-shade" aria-hidden="true"></div>'+
+  '<div class="welcome-top"><div class="welcome-logo"><span class="welcome-star">★</span><span>RINGSIDE</span></div><span class="welcome-edition">THE PROMOTION SIMULATOR</span></div>'+
+  '<section class="welcome-hero"><p class="welcome-eyebrow">WELCOME TO YOUR WRESTLING EMPIRE</p>'+
+  '<h1>THE RING IS YOURS.<br><em>WRITE THE LEGACY.</em></h1>'+
+  '<p class="welcome-description">Build your company. Sign rising stars. Create unforgettable rivalries. Challenge the biggest promotions in the world — one show at a time.</p>'+
+  '<button class="welcome-enter" type="button" data-enter-ringside="1">ENTER RINGSIDE <span aria-hidden="true">→</span></button>'+
+  '<p class="welcome-detail">Create your promotion · Book your shows · Build your dynasty</p></section>'+
+  '<div class="welcome-bottom"><span>YOUR COMPANY. YOUR DECISIONS. YOUR STORY.</span><span>SEASON 2026 · MANAGEMENT MODE</span></div>'+
+  '</main>';
+}
+
 function companySetupView(){
  const tier=model.companyTier||'startup';
  const picks={indie:1,startup:2,juggernaut:3}[tier]||2;
@@ -224,7 +238,7 @@ function companySetupView(){
   '<div class="eyebrow">CREATE YOUR WRESTLING COMPANY</div>'+
   '<h1>Start your own promotion</h1><p>Compete against WWE, AEW, TNA and ROH. Draft wrestlers into your new company. All contracts, budgets and transfers are fictional game rules.</p>'+
   '<form id="setup-company-form" class="form-grid">'+
-  '<div class="field full"><label>Promotion name</label><input class="input" name="name" id="setup-company-name" required minlength="3" maxlength="55" value="${safe(model.companyName)}"></div>'+
+  '<div class="field full"><label>Promotion name</label><input class="input" name="name" id="setup-company-name" required minlength="3" maxlength="55" value="'+safe(model.companyName)+'" placeholder="e.g. Apex Pro Wrestling"></div>'+
   '<div class="field full"><label>Starting level</label><select class="select" id="setup-tier" name="tier">'+
   [['indie','Indie · 1 man + 1 woman · $75,000 · 45-minute broadcasts'],
    ['startup','Startup · 2 men + 2 women · $400,000 · 60-minute broadcasts'],
@@ -237,10 +251,10 @@ function companySetupView(){
      '</select></div>').join('')+'</div></div>').join('')+
   '<div class="field full"><p class="micro">Starting championships are vacant. A smaller promotion books shorter weekly shows. Your existing save will be backed up before creating the company.</p>'+
   '<button type="submit" class="btn btn-coral btn-wide">Found company and confirm draft</button></div>'+
-  '</form><button class="btn btn-ghost" data-skip-company-setup="1">Continue existing WWE test campaign instead</button></section>';
+  '</form></section>';
 }
 
-function render(){if(!model.data)return;if(model.data.setup_eligible&&!model.setupDismissed){app.innerHTML=companySetupView();return;}const views={dashboard,booker:booking,roster:rosterView,stories:storiesView,press:pressView,titles:titlesView,tournaments:tournamentsView,creative:creativeView,staff:staffView,scouts:scoutsView,coaches:coachesView,market,calendar:calendarView,news:worldNewsView,social:socialView,sponsors:sponsorsView,finances};if(model.room){app.innerHTML=roomView();return;}app.innerHTML=`<div class="shell">${navHtml()}<div class="content">${header()}<main class="main-content">${views[model.view]()}</main></div></div>${mobileNav()}${modalHtml()}${model.loading?`<div class="simulation-loading" role="status" aria-live="polite"><div class="loading-dialog"><div class="loading-spinner"></div><div class="eyebrow">RINGSIDE · PRODUCTION CONTROL</div><h2>Simulating your show</h2><p>Calculating individual performances, audience responses, injuries, and finances. Numerical results will be saved before Ollama commentary starts.</p></div></div>`:''}`;const form=document.querySelector('#segment-form');if(form)syncBookingEligibility(form);}
+function render(){if(!model.data)return;if(!model.welcomeDismissed){app.innerHTML=welcomeView();return;}if(model.data.setup_eligible){app.innerHTML=companySetupView();return;}const views={dashboard,booker:booking,roster:rosterView,stories:storiesView,press:pressView,titles:titlesView,tournaments:tournamentsView,creative:creativeView,staff:staffView,scouts:scoutsView,coaches:coachesView,market,calendar:calendarView,news:worldNewsView,social:socialView,sponsors:sponsorsView,finances};if(model.room){app.innerHTML=roomView();return;}app.innerHTML=`<div class="shell">${navHtml()}<div class="content">${header()}<main class="main-content">${views[model.view]()}</main></div></div>${mobileNav()}${modalHtml()}${model.loading?`<div class="simulation-loading" role="status" aria-live="polite"><div class="loading-dialog"><div class="loading-spinner"></div><div class="eyebrow">RINGSIDE · PRODUCTION CONTROL</div><h2>Simulating your show</h2><p>Calculating individual performances, audience responses, injuries, and finances. Numerical results will be saved before Ollama commentary starts.</p></div></div>`:''}`;const form=document.querySelector('#segment-form');if(form)syncBookingEligibility(form);}
 async function watchNarration(showId){
   for(let tries=0;tries<48;tries++){
     await new Promise(resolve=>setTimeout(resolve,2500));
@@ -408,7 +422,7 @@ function liveModal(){
 }
 // Event delegation keeps bindings live after each full UI refresh.
 app.addEventListener('click',async e=>{
- const skipSetup=e.target.closest('[data-skip-company-setup]');if(skipSetup){model.setupDismissed=true;render();return;}
+ const enter=e.target.closest('[data-enter-ringside]');if(enter){model.welcomeDismissed=true;render();return;}
  const reopenSetup=e.target.closest('[data-open-company-setup]');if(reopenSetup){model.setupDismissed=false;render();return;}
 const pressNotice=e.target.closest('[data-press-reminder]');if(pressNotice){model.view='press';model.modal=null;render();return;}
  const fixtureButton=e.target.closest('[data-tournament-fixture]');
