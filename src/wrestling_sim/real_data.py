@@ -264,7 +264,13 @@ def main():
         sp.add_argument("--db",default=str(DEFAULT_DB))
         sp.add_argument("--limit",type=int,default=100 if cmd!="list" else 20)
         if cmd=="sync":sp.add_argument("--offset",type=int,default=0)
-        if cmd=="photos":sp.add_argument("--resolve-roster",action="store_true",help="Resolve official roster identities before importing Commons photos")
+        if cmd=="photos":
+            sp.add_argument("--resolve-roster",action="store_true",
+                            help="Resolve verified roster identities before importing Commons photos")
+            sp.add_argument("--save",default=None,
+                            help="Prioritize portraits for wrestlers in this existing campaign save")
+            sp.add_argument("--commons-search",action="store_true",
+                            help="Try conservative licensed Commons image search when P18 is unavailable; can be slower")
         if cmd in ("seed","seed-universe"):
             sp.add_argument("--save",default="saves/real_universe.db" if cmd=="seed-universe" else "saves/real_pilot.db")
     args=parser.parse_args()
@@ -276,9 +282,12 @@ def main():
         elif args.command=="seed":
             result=seed_game(args.db,args.save,args.limit)
         elif args.command=="photos":
-            from .real_photos import sync_photos, resolve_roster_identities
+            from .real_photos import sync_photos, resolve_roster_identities, prioritized_photo_ids
             resolved=resolve_roster_identities(args.db,min(args.limit,80)) if args.resolve_roster else None
-            result=sync_photos(args.db,args.limit)
+            priority=prioritized_photo_ids(args.save) if args.save else []
+            result=sync_photos(args.db,args.limit,priority_ids=priority,
+                               commons_search=args.commons_search)
+            if priority:result["save_roster_identities_prioritized"]=len(priority)
             if resolved:result["roster_identity_resolution"]=resolved
         else:
             from .real_universe import seed_universe
