@@ -173,6 +173,7 @@ def build_universe(catalogue="data/real_wrestlers.db", seed=2026, add_independen
                     "listed_by":detail["name"],"source_url":detail["source"],
                     "snapshot_reviewed":ROSTER_REVIEW_DATE,
                     "wikidata_id":identity["wikidata_id"] if identity else None,
+                    "birthdate_source_verified":bool(identity and identity.get("date_of_birth")),
                     "actual_contract_verified":False})
     if add_independents:
         with connection(catalogue) as db:
@@ -194,6 +195,7 @@ def build_universe(catalogue="data/real_wrestlers.db", seed=2026, add_independen
                     "source_name":record["display_name"],
                     "listed_by":None,"source_url":record["source_url"],
                     "snapshot_reviewed":record["retrieved_at"],
+                    "birthdate_source_verified":bool(record["date_of_birth"]),
                     "actual_contract_verified":False})
     if len(state.wrestlers)<80:
         raise ValueError("Real universe roster is incomplete")
