@@ -116,6 +116,54 @@ def _batch_metadata(titles):
             found[title[5:].replace("_"," ")]=_from_imageinfo(page["imageinfo"][0])
     return found
 
+def _commons_search_candidate(name):
+    """Fallback for missing P18. Search Commons with the verified wrestler's
+    exact ring name. Only select a clearly titled solo portrait with a valid
+    reuse licence; ambiguous photo results are deliberately ignored.
+    """
+    from .real_universe import normalize_name
+    data=_get_json(COMMONS,{
+        "action":"query","format":"json","generator":"search",
+        "gsrsearch":f'intitle:"{name}"',"gsrnamespace":6,"gsrlimit":8,
+        "prop":"imageinfo","iiprop":"url|extmetadata","iiurlwidth":350})
+    selected=[]
+    key=normalize_name(name)
+    for page in data.get("query",{}).get("pages",{}).values():
+        title=page.get("title","")
+        if not title.startswith("File:") or key not in normalize_name(title):
+            continue
+        stem=title[5:].rsplit(".",1)[0].replace("_"," ").casefold()
+        # Pictures whose filename advertises multiple subjects are not
+        # reliable single-person portraits.
+        if any(token in " "+stem+" " for token in (" and "," with "," vs "," versus "," group "," crowd "," team "," duo ")):
+            continue
+        if not page.get("imageinfo"):
+            continue
+        metadata=_from_imageinfo(page["imageinfo"][0])
+        if metadata:
+            selected.append(metadata)
+    # Multiple acceptable files for the same person can be fine, but keep
+    # deterministic ordering and never return a non-licensed image.
+    return sorted(selected,key=lambda item:item["commons_page"])[0] if selected else None
+
+
+def prioritized_photo_ids(save_path):
+    """Read participants from one game save; do not write to the save."""
+    from .database import load_database
+    from .real_universe import normalize_name
+    from .real_data import connection
+    state=load_database(save_path)
+    roster=[w for w in state.wrestlers.values() if w.company_id==state.player_company_id]
+    roster.sort(key=lambda w:w.name.casefold())
+    ids=[]
+    linked={entry.get("wrestler_id"):entry.get("wikidata_id")
+            for entry in state.activity_log
+            if entry.get("type")=="real_roster_provenance" and entry.get("wikidata_id")}
+    for w in roster:
+        qid=linked.get(w.id) or (w.id[3:] if w.id.startswith("wd_") else None)
+        if qid:ids.append(qid)
+    return list(dict.fromkeys(ids))
+
 def resolve_roster_identities(path,limit=80,offset=0):
     """Exact roster name or alias AND Wikidata professional-wrestler occupation.
 
@@ -170,7 +218,7 @@ def resolve_roster_identities(path,limit=80,offset=0):
     _progress(f"Roster identities finished: {accepted} matched, {previous} already known, {skipped} unresolved")
     return {"matched_roster_identities":accepted,"already_known":previous,"unresolved":skipped}
 
-def sync_photos(path,limit=100):
+def sync_photos(path,limit=100,priority_ids=None,commons_search=False):
     """Prioritize curated ring names; fetch photo metadata in 25-file batches."""
     from .real_data import connection
     from .scouting_data import SCOUTS
@@ -183,7 +231,9 @@ def sync_photos(path,limit=100):
         pending=db.execute("""SELECT wikidata_id,display_name FROM people WHERE
              wikidata_id NOT IN (SELECT wikidata_id FROM portraits)
              ORDER BY wikidata_id""").fetchall()
-        pending=sorted(pending,key=lambda row:(0 if row[1] in SCOUTS else 1,row[0]))[:limit]
+        priority=set(priority_ids or [])
+        pending=sorted(pending,key=lambda row:(0 if row[0] in priority else 1,
+                                                0 if row[1] in SCOUTS else 1,row[0]))[:limit]
         _progress(f"{len(pending)} people selected; curated roster identities prioritized.")
         for index in range(0,len(pending),25):
             batch=pending[index:index+25]
@@ -198,7 +248,19 @@ def sync_photos(path,limit=100):
                 filename=claims[0].get("mainsnak",{}).get("datavalue",{}).get("value") if claims else None
                 if isinstance(filename,str) and len(filename)<=240:
                     file_by_id[qid]=filename
-                else:skipped+=1
+                else:
+                    if commons_search:
+                        name=next((name for rowid,name in batch if rowid==qid),None)
+                        if name:
+                            _progress(f"No P18: checking licensed Commons photos for {name}")
+                            match=_commons_search_candidate(name)
+                            if match:
+                                db.execute("INSERT OR REPLACE INTO portraits VALUES(?,?,?,?,?,?,?)",
+                                    (qid,match["url"],match["commons_page"],match["author"],
+                                     match["license"],match["license_url"],now))
+                                imported+=1
+                                continue
+                    skipped+=1
             unique=list(dict.fromkeys(file_by_id.values()))
             details={}
             for start in range(0,len(unique),25):
