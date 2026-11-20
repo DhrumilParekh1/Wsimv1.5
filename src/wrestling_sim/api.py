@@ -21,7 +21,7 @@ from .sponsors import sponsor_offers, respond_sponsor, terminate_sponsor
 from .auto_narrative import auto_show, auto_dialogue
 from .narrative import config as ollama_config, status as ollama_status, rewrite_social, segment_recap, enhance_dialogue, enhance_highlights
 
-app = FastAPI(title="Fictional Wrestling Promotion Simulator API", version="1.10.0")
+app = FastAPI(title="Fictional Wrestling Promotion Simulator API", version="1.11.0")
 service = GameService(os.getenv('WRESTLING_SIM_SAVE', 'saves/game.db'))
 
 
@@ -346,6 +346,15 @@ def health():
     return {"status": "ok", "version": app.version}
 
 
+@app.get('/ui/build-info')
+def build_info():
+    """Useful when the browser is attached to a stale or different server."""
+    return {'api_version':app.version,'frontend_version':'1.11.0',
+            'save_path':str(service.path),
+            'fresh_setup_eligible':__import__(
+                'wrestling_sim.company_creation',fromlist=['is_eligible_for_company_creation']
+            ).is_eligible_for_company_creation(service.state)}
+
 @app.post('/game/new')
 def game_new(request: NewGameRequest):
     service.reset(request.seed)
@@ -459,7 +468,10 @@ app.mount('/assets', StaticFiles(directory=WEB_DIR / 'assets'), name='assets')
 
 @app.get('/', include_in_schema=False)
 def homepage():
-    return FileResponse(WEB_DIR / 'index.html')
+    # Never cache the HTML shell: otherwise a previous app.js build can keep
+    # showing the old company-name template after the server was updated.
+    return FileResponse(WEB_DIR / 'index.html',headers={
+        'Cache-Control':'no-store, max-age=0','Pragma':'no-cache'})
 
 
 class CompanySetupRequest(BaseModel):
@@ -493,7 +505,9 @@ def ui_setup_company(request: CompanySetupRequest):
                 raise
             return {'company':candidate.player_company.name,
                     'tier':request.tier,
-                    'roster_size':len(request.men)+len(request.women)}
+                    'roster_size':sum(w.company_id=='player' for w in candidate.wrestlers.values()),
+                    'generated_count':len([w for w in candidate.wrestlers.values()
+                                           if w.company_id=='player' and w.id.startswith('gen_')])}
         except ValueError as exc:
             raise HTTPException(status_code=400,detail=str(exc)) from exc
 
