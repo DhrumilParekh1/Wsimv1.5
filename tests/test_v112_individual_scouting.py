@@ -83,6 +83,11 @@ def test_real_world_universe_has_clear_rating_spread_and_individual_moves(tmp_pa
 
 def test_old_v1_scouting_upgrade_uses_backup_and_does_not_reset_career_state(tmp_path):
     state=build_universe(tmp_path/"source2.db",add_independents=False)
+    # This fixture represents a save authored under the V1 scouting rules,
+    # not a newly created save already marked V2.
+    for entry in state.activity_log:
+        if entry.get("type")=="scouting_method":
+            entry["model"]="editorial_2026_11_v1"
     unplayed=next(w for w in state.wrestlers.values() if w.name=="MJF")
     modified=next(w for w in state.wrestlers.values() if w.name=="Cody Rhodes")
     before,_=scouting_attributes_v1("MJF")
@@ -123,3 +128,29 @@ def test_browser_renders_individual_strengths_and_explicit_weaknesses(tmp_path,m
         "src/wrestling_sim/web/assets/app.js").read_text(encoding="utf-8")
     assert "Current limitation" in js
     assert "Established strength" in js
+
+
+def test_explicit_rebase_preserves_earned_skill_momentum_and_custom_moveset(tmp_path):
+    state=build_universe(tmp_path/"source4.db",add_independents=False)
+    for item in state.activity_log:
+        if item.get("type")=="scouting_method":
+            item["model"]="editorial_2026_11_v1"
+    w=next(w for w in state.wrestlers.values() if w.name=="MJF")
+    old,_=scouting_attributes_v1(w.name)
+    w.attributes.update(old)
+    w.attributes["workrate"]+=1.75
+    w.attributes["momentum"]+=2.0
+    old_moveset=list(w.moveset)
+    path=tmp_path/"played_game.db"
+    save_database(state,path)
+    dry=upgrade_saved_campaign(path,rebase_developed=True,dry_run=True)
+    assert dry["rebased"]==1
+    assert not Path(str(path)+".before-scouting-v2.bak").exists()
+    result=upgrade_saved_campaign(path,rebase_developed=True)
+    assert result["updated"]==1 and result["rebased"]==1
+    assert Path(result["backup"]).exists()
+    restored=load_database(path).wrestlers[w.id]
+    assert restored.attributes["workrate"]==min(25,PROFILES["MJF"]["workrate"]+1.75)
+    assert restored.attributes["momentum"]==min(25,PROFILES["MJF"]["momentum"]+2.0)
+    assert restored.moveset==old_moveset
+    assert upgrade_saved_campaign(path,rebase_developed=True)["updated"]==0
