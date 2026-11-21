@@ -260,36 +260,66 @@ def apply_scouting_to_wrestler(wrestler,force=False):
     wrestler.moveset=default_moveset(wrestler.id,wrestler.attributes)
     return True
 
-def upgrade_saved_campaign(path):
-    """Explicit, backed-up one-time opt-in for an existing SQLite campaign."""
+def upgrade_saved_campaign(path,refresh_editorial=False,dry_run=False):
+    """Opt-in upgrade; never silently reset wrestlers in an active campaign.
+
+    Default: legacy neutral 12.5 imports only.
+    --refresh-editorial: also convert IDENTICAL old-v1 reviewed public ratings
+    to the new independently scored profiles. A skill developed during actual
+    gameplay prevents automatic replacement; the player can keep that save
+    unchanged instead of losing hours of progression.
+    """
     import shutil
     from pathlib import Path
     from .database import load_database,save_database
     target=Path(path)
-    if not target.is_file() or target.suffix!=".db":
+    if not target.is_file() or target.suffix.lower()!=".db":
         raise FileNotFoundError("Specify an existing .db campaign path")
     state=load_database(target)
-    identities=[w for w in state.wrestlers.values() if w.id.startswith(("rw_","wd_"))]
-    eligible=[w for w in identities if all(w.attributes[k]==12.5
-              for k in ("workrate","technique","moves","sequences","flair","selling"))]
+    identities=[w for w in state.wrestlers.values()
+                if w.id.startswith(("rw_","wd_"))]
+    eligible=[]
+    skipped_modified=0
+    for w in identities:
+        neutral=all(w.attributes[k]==12.5
+                    for k in ("workrate","technique","moves","sequences","flair","selling"))
+        if neutral or (refresh_editorial and _v1_profile_unchanged(w)):
+            eligible.append(w)
+        elif refresh_editorial and w.name in PROFILES:
+            skipped_modified+=1
+    if dry_run:
+        return {"eligible":len(eligible),"skipped_modified":skipped_modified,
+                "save":str(target),"dry_run":True,
+                "note":"No save or backup was changed"}
     if not eligible:
-        return {"updated":0,"note":"No unchanged placeholder profiles; save left untouched"}
-    backup=target.with_name(target.name+".before-scouting.bak")
+        return {"updated":0,"skipped_modified":skipped_modified,
+                "note":"No safe unchanged profiles to upgrade; save left untouched"}
+    backup=target.with_name(target.name+(
+        ".before-scouting-v2.bak" if refresh_editorial else ".before-scouting.bak"))
     if backup.exists():
         raise FileExistsError("Refusing to overwrite an earlier backup: "+str(backup))
     shutil.copy2(target,backup)
     count=0
     for w in eligible:
-        if apply_scouting_to_wrestler(w):
+        # Explicitly authorized; checked not to have diverged from its original
+        # unplayed template. Preserve contracts, histories, role and morale.
+        if apply_scouting_to_wrestler(w,force=True):
             count+=1
-            state.activity_log.append({"type":"editorial_scouting_update","wrestler_id":w.id,
-                         "method":MODEL_VERSION,"not_a_factual_personal_profile":True})
+            state.activity_log.append({
+                "type":"editorial_scouting_update","wrestler_id":w.id,
+                "method":MODEL_VERSION,"not_a_factual_personal_profile":True})
     save_database(state,target)
-    return {"updated":count,"backup":str(backup),"save":str(target)}
+    return {"updated":count,"skipped_modified":skipped_modified,
+            "backup":str(backup),"save":str(target),"method":MODEL_VERSION}
 
 if __name__=="__main__":
     import argparse,json
     parser=argparse.ArgumentParser(description="Upgrade placeholder profiles in an existing campaign")
     parser.add_argument("--save",required=True)
+    parser.add_argument("--refresh-editorial",action="store_true",
+        help="Update unchanged old V1 scouting profiles as well as neutral imports")
+    parser.add_argument("--dry-run",action="store_true",
+        help="Preview the number of safe changes without modifying the save")
     args=parser.parse_args()
-    print(json.dumps(upgrade_saved_campaign(args.save),indent=2))
+    print(json.dumps(upgrade_saved_campaign(
+        args.save,refresh_editorial=args.refresh_editorial,dry_run=args.dry_run),indent=2))
