@@ -191,6 +191,11 @@ def build_universe(catalogue="data/real_wrestlers.db", seed=2026, add_independen
                 member.contract_weeks=0
                 member.discovery_tier="known"
                 state.wrestlers[wid]=member
+                provenance.append({"type":"scouting_method","wrestler_id":wid,
+                                   "model":"editorial_2026_11_v2",
+                                   "public_reviewed":member.name in __import__(
+                                       'wrestling_sim.scouting_profiles_v2',
+                                       fromlist=['PROFILES']).PROFILES})
                 provenance.append({"type":"real_roster_provenance","wrestler_id":wid,
                     "source_name":record["display_name"],
                     "listed_by":None,"source_url":record["source_url"],
