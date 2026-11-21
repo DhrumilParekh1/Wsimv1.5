@@ -9,6 +9,8 @@ from __future__ import annotations
 import hashlib
 from .weights import ALL_ATTRIBUTES
 from .models import clamp
+from .scouting_profiles_v2 import (PROFILES, PUBLIC_KEYS, SCOUTING_NOTES,
+    EVIDENCE, REVIEWED_ON, MODEL_VERSION as CURRENT_MODEL_VERSION)
 
 # Name | ring archetype | in-ring aptitude | on-screen microphone/character |
 # public audience recognition | in-ring experience.
@@ -116,7 +118,7 @@ GAME_SOURCES={
     "TNA Wrestling":"https://tnawrestling.com/roster",
     "Ring of Honor":"https://www.ringofhonor.com/roster",
 }
-MODEL_VERSION="editorial_2026_11_v1"
+MODEL_VERSION=CURRENT_MODEL_VERSION
 
 def scouting_inputs(name):
     if name in SCOUTS:
@@ -128,7 +130,7 @@ def scouting_inputs(name):
     return (kinds[digest[0]%len(kinds)],13+digest[1]%6,
             12+digest[2]%7,10+digest[3]%8,11+digest[4]%9),"synthetic"
 
-def scouting_attributes(name):
+def scouting_attributes_v1(name):
     (style,ring,mic,draw,experience),confidence=scouting_inputs(name)
     # Gameplay profiles are distinct, but off-screen/private judgments remain
     # neutral instead of making invented factual claims about real people.
@@ -150,9 +152,93 @@ def scouting_attributes(name):
     for key,bonus in ARCHETYPE_BONUSES[style].items():
         attrs[key]+=bonus
     return ({key:round(clamp(value,0,25),2) for key,value in attrs.items()},
-            {"method":MODEL_VERSION,"confidence":confidence,
+            {"method":"editorial_2026_11_v1","confidence":confidence,
              "editorial_archetype":style,
              "note":"Subjective game scouting, not factual personal ratings."})
+
+# Character roles represent on-screen performance (not a person's morals).
+# Detailed character-context exceptions keep heels and faces from converging.
+ROLE_OVERRIDES={
+    "MJF":(18,25,22),"CM Punk":(24,25,24),"Cody Rhodes":(25,22,23),
+    "Roman Reigns":(22,25,24),"Gunther":(17,24,21),
+    "Jey Uso":(25,18,22),"Dominik Mysterio":(14,25,19),
+    "Randy Orton":(23,24,23),"Drew McIntyre":(23,24,22),
+    "Rhea Ripley":(23,24,25),"Becky Lynch":(25,24,23),
+    "Bianca Belair":(25,18,21),"Jade Cargill":(22,18,20),
+    "Tiffany Stratton":(22,23,20),"Seth Rollins":(23,24,24),
+    "Will Ospreay":(24,20,24),"Kenny Omega":(24,20,24),
+    "Jon Moxley":(22,24,24),"Swerve Strickland":(22,25,23),
+    "Mercedes Moné":(23,24,22),"Willow Nightingale":(25,17,20),
+    "Jamie Hayter":(23,24,22),"Athena":(20,25,23),
+    "Dalton Castle":(25,22,24),"Darby Allin":(24,21,23),
+    "Nic Nemeth":(22,24,23),"Jeff Hardy":(25,18,23),
+    "Matt Hardy":(23,23,24),"Bandido":(24,20,22),
+}
+
+def _potential_factors(wrestler):
+    """Career runway uses years of on-screen work, not an unverified birthdate."""
+    experience=wrestler.attributes["experience"]
+    form=wrestler.attributes["momentum"]
+    growth=clamp(.91-experience*.022 + max(-.05,min(.06,(form-16)*.007)),.24,.84)
+    runway=clamp(1.03-experience*.026,.34,.88)
+    # Young developing stars can exceed their current commercial ceiling;
+    # decorated long-career performers are nearer their established peak.
+    boosts={
+        "Bron Breakker":(.84,.90),"Tiffany Stratton":(.81,.89),
+        "Leon Slater":(.85,.94),"Billie Starkz":(.84,.92),
+        "Jada Stone":(.81,.90),"Megan Bayne":(.72,.80),
+        "Kyle Fletcher":(.72,.77),"Carmelo Hayes":(.73,.80),
+        "Jade Cargill":(.69,.78),"Komander":(.73,.81),
+        "Randy Orton":(.23,.31),"Matt Hardy":(.23,.27),
+        "Jeff Hardy":(.25,.30),"Samoa Joe":(.28,.33),
+        "Kenny Omega":(.29,.35),"CM Punk":(.27,.30),
+    }
+    return boosts.get(wrestler.name,(round(growth,3),round(runway,3)))
+
+def scouting_attributes(name):
+    """One wrestler's independently scored public work; no generic archetype boost.
+
+    The explicit 20-field row represents PRESENT in-ring work, promos and draw,
+    while experience reflects career history. Private/off-camera attributes
+    deliberately remain neutral instead of fabricated allegations.
+    """
+    if name not in PROFILES:
+        legacy,meta=scouting_attributes_v1(name)
+        meta.update({"method":MODEL_VERSION,
+                     "confidence":"synthetic","public_evidence":[],
+                     "note":"No individual reviewed profile: synthetic game-only estimate."})
+        return legacy,meta
+    attrs={attribute:12.5 for attribute in ALL_ATTRIBUTES}
+    attrs.update(PROFILES[name])
+    attrs.update({
+        "controversy_risk":5.0,"injury_proneness":9.0,
+        "professionalism":12.5,"loyalty":12.5,"ambition":12.5,
+        "social_media_work":12.5,
+    })
+    base=PROFILES[name]
+    # Baseline flexibility in character alignment is tied to proven
+    # performance. Bespoke overrides distinguish specialist face/heel acts.
+    roles=ROLE_OVERRIDES.get(name,(
+        round(clamp(8.0+.55*base["fan_connection"]+.10*base["charisma"],0,25),2),
+        round(clamp(8.0+.50*base["character_work"]+.13*base["mic_skills"],0,25),2),
+        round(clamp(7.0+.40*base["charisma"]+.20*base["sequences"],0,25),2)))
+    attrs.update(dict(zip(("face","heel","tweener"),roles)))
+    strengths,limitations=SCOUTING_NOTES[name]
+    return ({key:round(clamp(value,0,25),2) for key,value in attrs.items()},
+            {"method":MODEL_VERSION,"confidence":"individual_editorial",
+             "reviewed_on":REVIEWED_ON,"strengths":strengths,
+             "limitations":limitations,
+             "public_evidence":[EVIDENCE["pwi_500_2026"],EVIDENCE["pwi_womens_250_2026"],
+                                EVIDENCE["weekly_pwi"]],
+             "note":"Editorial gameplay judgments; not independently measured personal attributes."})
+
+def _v1_profile_unchanged(wrestler):
+    """Conservative detection: don't reset skills changed by a played campaign."""
+    if wrestler.name not in PROFILES:
+        return False
+    old,_=scouting_attributes_v1(wrestler.name)
+    return all(abs(wrestler.attributes.get(k,-100)-old[k])<.001
+               for k in PUBLIC_KEYS if k!="momentum")
 
 def apply_scouting_to_wrestler(wrestler,force=False):
     # The legacy default = 12.5 for all ring skills. Never overwrite a career
@@ -163,12 +249,15 @@ def apply_scouting_to_wrestler(wrestler,force=False):
         return False
     attrs,source=scouting_attributes(wrestler.name)
     wrestler.attributes.update(attrs)
-    if source["confidence"]=="editorial":
-        wrestler.growth_aptitude=.44 if wrestler.age>37 else .64
-        wrestler.development_runway=.38 if wrestler.age>37 else .76
+    if source["confidence"]=="individual_editorial":
+        wrestler.growth_aptitude,wrestler.development_runway=_potential_factors(wrestler)
     else:
         wrestler.growth_aptitude=.54
         wrestler.development_runway=.62
+    # Movesets were originally generated from the generic 12.5 profile.
+    # Always align an imported real wrestler's moves to their new ring skills.
+    from .movesets import default_moveset
+    wrestler.moveset=default_moveset(wrestler.id,wrestler.attributes)
     return True
 
 def upgrade_saved_campaign(path):
