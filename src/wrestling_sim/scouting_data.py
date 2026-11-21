@@ -262,14 +262,15 @@ def apply_scouting_to_wrestler(wrestler,force=False):
     wrestler.moveset=default_moveset(wrestler.id,wrestler.attributes)
     return True
 
-def upgrade_saved_campaign(path,refresh_editorial=False,dry_run=False):
-    """Opt-in upgrade; never silently reset wrestlers in an active campaign.
+def upgrade_saved_campaign(path,refresh_editorial=False,dry_run=False,
+                           rebase_developed=False):
+    """Explicit, backed-up legacy save migration.
 
-    Default: legacy neutral 12.5 imports only.
-    --refresh-editorial: also convert IDENTICAL old-v1 reviewed public ratings
-    to the new independently scored profiles. A skill developed during actual
-    gameplay prevents automatic replacement; the player can keep that save
-    unchanged instead of losing hours of progression.
+    Default updates neutral 12.5 imports only. --refresh-editorial also
+    upgrades untouched V1 profiles. --rebase-developed is a separate opt-in
+    for played V1 saves: the V1-to-V2 baseline difference is added to current
+    2026 stats, preserving earned improvements instead of resetting them.
+    A V2 profile is never rebased twice.
     """
     import shutil
     from pathlib import Path
@@ -280,47 +281,76 @@ def upgrade_saved_campaign(path,refresh_editorial=False,dry_run=False):
     state=load_database(target)
     identities=[w for w in state.wrestlers.values()
                 if w.id.startswith(("rw_","wd_"))]
+    v2_recorded={
+        x.get("wrestler_id") for x in state.activity_log
+        if x.get("type") in ("editorial_scouting_update","scouting_method")
+        and x.get("method",x.get("model"))==MODEL_VERSION}
     eligible=[]
     skipped_modified=0
     for w in identities:
-        neutral=all(w.attributes[k]==12.5
-                    for k in ("workrate","technique","moves","sequences","flair","selling"))
-        if neutral or (refresh_editorial and _v1_profile_unchanged(w)):
-            eligible.append(w)
-        elif refresh_editorial and w.name in PROFILES:
+        neutral=all(w.attributes[k]==12.5 for k in
+                    ("workrate","technique","moves","sequences","flair","selling"))
+        if neutral and w.id not in v2_recorded:
+            eligible.append((w,"replace"))
+        elif refresh_editorial and _v1_profile_unchanged(w) and w.id not in v2_recorded:
+            eligible.append((w,"replace"))
+        elif (rebase_developed and w.name in PROFILES and
+              w.id not in v2_recorded):
+            baseline,_=scouting_attributes(w.name)
+            # Don't mistake a current V2 source profile for an old V1 one
+            # in campaigns created before logging a model identifier.
+            if all(abs(w.attributes[k]-baseline[k])<.001 for k in PUBLIC_KEYS):
+                continue
+            eligible.append((w,"rebase"))
+        elif (refresh_editorial or rebase_developed) and w.name in PROFILES:
             skipped_modified+=1
     if dry_run:
-        return {"eligible":len(eligible),"skipped_modified":skipped_modified,
+        return {"eligible":len(eligible),
+                "rebased":sum(mode=="rebase" for _,mode in eligible),
+                "skipped_modified":skipped_modified,
                 "save":str(target),"dry_run":True,
-                "note":"No save or backup was changed"}
+                "note":"Preview only; save and backup unchanged"}
     if not eligible:
-        return {"updated":0,"skipped_modified":skipped_modified,
-                "note":"No safe unchanged profiles to upgrade; save left untouched"}
+        return {"updated":0,"rebased":0,"skipped_modified":skipped_modified,
+                "note":"No eligible legacy profiles; save left untouched"}
     backup=target.with_name(target.name+(
-        ".before-scouting-v2.bak" if refresh_editorial else ".before-scouting.bak"))
+        ".before-scouting-v2.bak"
+        if (refresh_editorial or rebase_developed)
+        else ".before-scouting.bak"))
     if backup.exists():
         raise FileExistsError("Refusing to overwrite an earlier backup: "+str(backup))
     shutil.copy2(target,backup)
-    count=0
-    for w in eligible:
-        # Explicitly authorized; preserve contract, match history and
-        # storyline-earned momentum when only momentum changed.
-        old_form,_=scouting_attributes_v1(w.name)
-        modified_momentum=(refresh_editorial and not all(
-            w.attributes[k]==12.5
-            for k in ("workrate","technique","moves","sequences","flair","selling"))
-            and abs(w.attributes["momentum"]-old_form["momentum"])>.001)
-        kept_momentum=w.attributes["momentum"]
-        if apply_scouting_to_wrestler(w,force=True):
-            if modified_momentum:
-                w.attributes["momentum"]=kept_momentum
-            count+=1
-            state.activity_log.append({
-                "type":"editorial_scouting_update","wrestler_id":w.id,
-                "method":MODEL_VERSION,"not_a_factual_personal_profile":True})
+    count=rebased=0
+    for w,mode in eligible:
+        prior,_=scouting_attributes_v1(w.name)
+        if mode=="rebase":
+            # Preserve both the pre-existing baseline and any real in-game
+            # training/storyline progression as offsets from the old values.
+            latest,_=scouting_attributes(w.name)
+            for key in PUBLIC_KEYS:
+                w.attributes[key]=round(clamp(
+                    latest[key]+(w.attributes[key]-prior[key]),0,25),2)
+            w.growth_aptitude,w.development_runway=_potential_factors(w)
+            rebased+=1
+            # Player-defined movesets are left untouched for played saves.
+        else:
+            previous_momentum=w.attributes["momentum"]
+            earned_momentum=(refresh_editorial and
+                not all(w.attributes[k]==12.5 for k in
+                        ("workrate","technique","moves","sequences","flair","selling"))
+                and abs(previous_momentum-prior["momentum"])>.001)
+            apply_scouting_to_wrestler(w,force=True)
+            if earned_momentum:
+                w.attributes["momentum"]=previous_momentum
+        count+=1
+        state.activity_log.append({
+            "type":"editorial_scouting_update","wrestler_id":w.id,
+            "method":MODEL_VERSION,"migration_mode":mode,
+            "not_a_factual_personal_profile":True})
     save_database(state,target)
-    return {"updated":count,"skipped_modified":skipped_modified,
-            "backup":str(backup),"save":str(target),"method":MODEL_VERSION}
+    return {"updated":count,"rebased":rebased,
+            "skipped_modified":skipped_modified,"backup":str(backup),
+            "save":str(target),"method":MODEL_VERSION}
 
 if __name__=="__main__":
     import argparse,json
@@ -328,8 +358,11 @@ if __name__=="__main__":
     parser.add_argument("--save",required=True)
     parser.add_argument("--refresh-editorial",action="store_true",
         help="Update unchanged old V1 scouting profiles as well as neutral imports")
+    parser.add_argument("--rebase-developed",action="store_true",
+        help="Explicitly rebase played old-V1 profiles while preserving skill gains")
     parser.add_argument("--dry-run",action="store_true",
         help="Preview the number of safe changes without modifying the save")
     args=parser.parse_args()
     print(json.dumps(upgrade_saved_campaign(
-        args.save,refresh_editorial=args.refresh_editorial,dry_run=args.dry_run),indent=2))
+        args.save,refresh_editorial=args.refresh_editorial,
+        dry_run=args.dry_run,rebase_developed=args.rebase_developed),indent=2))
