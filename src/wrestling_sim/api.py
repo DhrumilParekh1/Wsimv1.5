@@ -592,8 +592,14 @@ def ui_state():
             'wrestlers': [{**asdict(w), **portraits.get(w.id,{}),
                           'real_profile_source':profile_sources.get(w.id,{}).get("source_url"),
                           'age_source_verified':profile_sources.get(w.id,{}).get("birthdate_source_verified",False),
-                          'ratings_method':"editorial_2026_11_v1" if w.id.startswith("rw_") else
-                                           "game_estimate" if w.id.startswith("wd_") else "fictional",
+                          'ratings_method':__import__(
+                              'wrestling_sim.scouting_data',fromlist=['scouting_attributes']
+                           ).scouting_attributes(w.name)[1]["method"]
+                             if w.id.startswith(("rw_","wd_")) else "fictional",
+                          'scouting_review':__import__(
+                              'wrestling_sim.scouting_data',fromlist=['scouting_attributes']
+                           ).scouting_attributes(w.name)[1]
+                             if w.id.startswith(("rw_","wd_")) else None,
                           'ratings': {**rating_breakdown(w), 'market_dollars':__import__('wrestling_sim.front_office',fromlist=['monetary_value']).monetary_value(w,state)}}
                           for w in state.wrestlers.values()],
             'storylines': [asdict(s) for s in state.storylines.values()],
