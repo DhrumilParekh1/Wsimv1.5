@@ -241,6 +241,10 @@ def seed_game(path=DEFAULT_DB, save="saves/real_pilot.db", limit=100, seed=2026)
             if row["weight_kg"] and 45<=row["weight_kg"]<=260:
                 w.weight_kg=row["weight_kg"]
             w.discovery_tier="known"
+            # Whether seeded into the full real-world universe or the legacy
+            # free-agent pilot, recognized performers receive reviewed stats.
+            from .scouting_data import apply_scouting_to_wrestler
+            apply_scouting_to_wrestler(w,force=True)
             state.wrestlers[wid]=w
             added+=1
     if not added:
