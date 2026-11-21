@@ -290,7 +290,7 @@ def upgrade_saved_campaign(path,refresh_editorial=False,dry_run=False,
     for w in identities:
         neutral=all(w.attributes[k]==12.5 for k in
                     ("workrate","technique","moves","sequences","flair","selling"))
-        if neutral and w.id not in v2_recorded:
+        if neutral:
             eligible.append((w,"replace"))
         elif refresh_editorial and _v1_profile_unchanged(w) and w.id not in v2_recorded:
             eligible.append((w,"replace"))
