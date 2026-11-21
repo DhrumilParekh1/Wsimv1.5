@@ -165,7 +165,7 @@ def build_universe(catalogue="data/real_wrestlers.db", seed=2026, add_independen
                 state.wrestlers[wid]=wrestler
                 ids_by_name[slug]=wid
                 provenance.append({"type":"scouting_method","wrestler_id":wid,
-                                   "model":"editorial_2026_11_v1",
+                                   "model":"editorial_2026_11_v2",
                                    "public_listing":detail["source"],
                                    "scores_are_game_estimates":True})
                 provenance.append({"type":"real_roster_provenance",
