@@ -1,7 +1,9 @@
 """Editorial RINGSIDE scouting estimates, not verified measurements of a person.
 
 Public on-screen wrestling work, published achievements and relative audience
-exposure inform the selected game archetypes. These numbers are subjective
+exposure inform an independent 20-attribute assessment of each reviewed
+person. Only unknown/unreviewed names use archetype-based game placeholders.
+These numbers are subjective
 2026 GAME DESIGN judgments, not independently measured stats. Private
 personality, loyalty, reputation or controversy are never inferred from a name.
 """
@@ -301,9 +303,17 @@ def upgrade_saved_campaign(path,refresh_editorial=False,dry_run=False):
     shutil.copy2(target,backup)
     count=0
     for w in eligible:
-        # Explicitly authorized; checked not to have diverged from its original
-        # unplayed template. Preserve contracts, histories, role and morale.
+        # Explicitly authorized; preserve contract, match history and
+        # storyline-earned momentum when only momentum changed.
+        old_form,_=scouting_attributes_v1(w.name)
+        modified_momentum=(refresh_editorial and not all(
+            w.attributes[k]==12.5
+            for k in ("workrate","technique","moves","sequences","flair","selling"))
+            and abs(w.attributes["momentum"]-old_form["momentum"])>.001)
+        kept_momentum=w.attributes["momentum"]
         if apply_scouting_to_wrestler(w,force=True):
+            if modified_momentum:
+                w.attributes["momentum"]=kept_momentum
             count+=1
             state.activity_log.append({
                 "type":"editorial_scouting_update","wrestler_id":w.id,
