@@ -246,6 +246,9 @@ def seed_game(path=DEFAULT_DB, save="saves/real_pilot.db", limit=100, seed=2026)
             from .scouting_data import apply_scouting_to_wrestler
             apply_scouting_to_wrestler(w,force=True)
             state.wrestlers[wid]=w
+            state.activity_log.append({"type":"scouting_method","wrestler_id":wid,
+                                       "model":"editorial_2026_11_v2",
+                                       "provisional_if_unreviewed":True})
             added+=1
     if not added:
         raise ValueError("No eligible profiles with usable birth year and gender found.")
