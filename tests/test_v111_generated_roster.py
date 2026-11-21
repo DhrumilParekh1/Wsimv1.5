@@ -52,9 +52,9 @@ def test_fresh_html_uses_versioned_assets_and_no_cache():
     response=TestClient(app).get("/")
     assert response.status_code==200
     assert "no-store" in response.headers["cache-control"]
-    assert 'app.js?v=1.11.0' in response.text
-    assert 'styles.css?v=1.11.0' in response.text
-    assert TestClient(app).get("/ui/build-info").json()["frontend_version"]=="1.11.0"
+    assert 'app.js?v=1.12.0' in response.text
+    assert 'styles.css?v=1.12.0' in response.text
+    assert TestClient(app).get("/ui/build-info").json()["frontend_version"]=="1.12.0"
 
 
 def test_backfill_existing_indie_campaign_once_with_backup(tmp_path):

@@ -1,7 +1,9 @@
 """Editorial RINGSIDE scouting estimates, not verified measurements of a person.
 
 Public on-screen wrestling work, published achievements and relative audience
-exposure inform the selected game archetypes. These numbers are subjective
+exposure inform an independent 20-attribute assessment of each reviewed
+person. Only unknown/unreviewed names use archetype-based game placeholders.
+These numbers are subjective
 2026 GAME DESIGN judgments, not independently measured stats. Private
 personality, loyalty, reputation or controversy are never inferred from a name.
 """
@@ -9,6 +11,8 @@ from __future__ import annotations
 import hashlib
 from .weights import ALL_ATTRIBUTES
 from .models import clamp
+from .scouting_profiles_v2 import (PROFILES, PUBLIC_KEYS, SCOUTING_NOTES,
+    EVIDENCE, REVIEWED_ON, MODEL_VERSION as CURRENT_MODEL_VERSION)
 
 # Name | ring archetype | in-ring aptitude | on-screen microphone/character |
 # public audience recognition | in-ring experience.
@@ -116,7 +120,7 @@ GAME_SOURCES={
     "TNA Wrestling":"https://tnawrestling.com/roster",
     "Ring of Honor":"https://www.ringofhonor.com/roster",
 }
-MODEL_VERSION="editorial_2026_11_v1"
+MODEL_VERSION=CURRENT_MODEL_VERSION
 
 def scouting_inputs(name):
     if name in SCOUTS:
@@ -128,7 +132,7 @@ def scouting_inputs(name):
     return (kinds[digest[0]%len(kinds)],13+digest[1]%6,
             12+digest[2]%7,10+digest[3]%8,11+digest[4]%9),"synthetic"
 
-def scouting_attributes(name):
+def scouting_attributes_v1(name):
     (style,ring,mic,draw,experience),confidence=scouting_inputs(name)
     # Gameplay profiles are distinct, but off-screen/private judgments remain
     # neutral instead of making invented factual claims about real people.
@@ -150,9 +154,93 @@ def scouting_attributes(name):
     for key,bonus in ARCHETYPE_BONUSES[style].items():
         attrs[key]+=bonus
     return ({key:round(clamp(value,0,25),2) for key,value in attrs.items()},
-            {"method":MODEL_VERSION,"confidence":confidence,
+            {"method":"editorial_2026_11_v1","confidence":confidence,
              "editorial_archetype":style,
              "note":"Subjective game scouting, not factual personal ratings."})
+
+# Character roles represent on-screen performance (not a person's morals).
+# Detailed character-context exceptions keep heels and faces from converging.
+ROLE_OVERRIDES={
+    "MJF":(18,25,22),"CM Punk":(24,25,24),"Cody Rhodes":(25,22,23),
+    "Roman Reigns":(22,25,24),"Gunther":(17,24,21),
+    "Jey Uso":(25,18,22),"Dominik Mysterio":(14,25,19),
+    "Randy Orton":(23,24,23),"Drew McIntyre":(23,24,22),
+    "Rhea Ripley":(23,24,25),"Becky Lynch":(25,24,23),
+    "Bianca Belair":(25,18,21),"Jade Cargill":(22,18,20),
+    "Tiffany Stratton":(22,23,20),"Seth Rollins":(23,24,24),
+    "Will Ospreay":(24,20,24),"Kenny Omega":(24,20,24),
+    "Jon Moxley":(22,24,24),"Swerve Strickland":(22,25,23),
+    "Mercedes Moné":(23,24,22),"Willow Nightingale":(25,17,20),
+    "Jamie Hayter":(23,24,22),"Athena":(20,25,23),
+    "Dalton Castle":(25,22,24),"Darby Allin":(24,21,23),
+    "Nic Nemeth":(22,24,23),"Jeff Hardy":(25,18,23),
+    "Matt Hardy":(23,23,24),"Bandido":(24,20,22),
+}
+
+def _potential_factors(wrestler):
+    """Career runway uses years of on-screen work, not an unverified birthdate."""
+    experience=wrestler.attributes["experience"]
+    form=wrestler.attributes["momentum"]
+    growth=clamp(.91-experience*.022 + max(-.05,min(.06,(form-16)*.007)),.24,.84)
+    runway=clamp(1.03-experience*.026,.34,.88)
+    # Young developing stars can exceed their current commercial ceiling;
+    # decorated long-career performers are nearer their established peak.
+    boosts={
+        "Bron Breakker":(.84,.90),"Tiffany Stratton":(.81,.89),
+        "Leon Slater":(.85,.94),"Billie Starkz":(.84,.92),
+        "Jada Stone":(.81,.90),"Megan Bayne":(.72,.80),
+        "Kyle Fletcher":(.72,.77),"Carmelo Hayes":(.73,.80),
+        "Jade Cargill":(.69,.78),"Komander":(.73,.81),
+        "Randy Orton":(.23,.31),"Matt Hardy":(.23,.27),
+        "Jeff Hardy":(.25,.30),"Samoa Joe":(.28,.33),
+        "Kenny Omega":(.29,.35),"CM Punk":(.27,.30),
+    }
+    return boosts.get(wrestler.name,(round(growth,3),round(runway,3)))
+
+def scouting_attributes(name):
+    """One wrestler's independently scored public work; no generic archetype boost.
+
+    The explicit 20-field row represents PRESENT in-ring work, promos and draw,
+    while experience reflects career history. Private/off-camera attributes
+    deliberately remain neutral instead of fabricated allegations.
+    """
+    if name not in PROFILES:
+        legacy,meta=scouting_attributes_v1(name)
+        meta.update({"method":MODEL_VERSION,
+                     "confidence":"synthetic","public_evidence":[],
+                     "note":"No individual reviewed profile: synthetic game-only estimate."})
+        return legacy,meta
+    attrs={attribute:12.5 for attribute in ALL_ATTRIBUTES}
+    attrs.update(PROFILES[name])
+    attrs.update({
+        "controversy_risk":5.0,"injury_proneness":9.0,
+        "professionalism":12.5,"loyalty":12.5,"ambition":12.5,
+        "social_media_work":12.5,
+    })
+    base=PROFILES[name]
+    # Baseline flexibility in character alignment is tied to proven
+    # performance. Bespoke overrides distinguish specialist face/heel acts.
+    roles=ROLE_OVERRIDES.get(name,(
+        round(clamp(8.0+.55*base["fan_connection"]+.10*base["charisma"],0,25),2),
+        round(clamp(8.0+.50*base["character_work"]+.13*base["mic_skills"],0,25),2),
+        round(clamp(7.0+.40*base["charisma"]+.20*base["sequences"],0,25),2)))
+    attrs.update(dict(zip(("face","heel","tweener"),roles)))
+    strengths,limitations=SCOUTING_NOTES[name]
+    return ({key:round(clamp(value,0,25),2) for key,value in attrs.items()},
+            {"method":MODEL_VERSION,"confidence":"individual_editorial",
+             "reviewed_on":REVIEWED_ON,"strengths":strengths,
+             "limitations":limitations,
+             "public_evidence":[EVIDENCE["pwi_500_2026"],EVIDENCE["pwi_womens_250_2026"],
+                                EVIDENCE["weekly_pwi"]],
+             "note":"Editorial gameplay judgments; not independently measured personal attributes."})
+
+def _v1_profile_unchanged(wrestler):
+    """Conservative detection: don't reset skills changed by a played campaign."""
+    if wrestler.name not in PROFILES:
+        return False
+    old,_=scouting_attributes_v1(wrestler.name)
+    return all(abs(wrestler.attributes.get(k,-100)-old[k])<.001
+               for k in PUBLIC_KEYS if k!="momentum")
 
 def apply_scouting_to_wrestler(wrestler,force=False):
     # The legacy default = 12.5 for all ring skills. Never overwrite a career
@@ -163,44 +251,118 @@ def apply_scouting_to_wrestler(wrestler,force=False):
         return False
     attrs,source=scouting_attributes(wrestler.name)
     wrestler.attributes.update(attrs)
-    if source["confidence"]=="editorial":
-        wrestler.growth_aptitude=.44 if wrestler.age>37 else .64
-        wrestler.development_runway=.38 if wrestler.age>37 else .76
+    if source["confidence"]=="individual_editorial":
+        wrestler.growth_aptitude,wrestler.development_runway=_potential_factors(wrestler)
     else:
         wrestler.growth_aptitude=.54
         wrestler.development_runway=.62
+    # Movesets were originally generated from the generic 12.5 profile.
+    # Always align an imported real wrestler's moves to their new ring skills.
+    from .movesets import default_moveset
+    wrestler.moveset=default_moveset(wrestler.id,wrestler.attributes)
     return True
 
-def upgrade_saved_campaign(path):
-    """Explicit, backed-up one-time opt-in for an existing SQLite campaign."""
+def upgrade_saved_campaign(path,refresh_editorial=False,dry_run=False,
+                           rebase_developed=False):
+    """Explicit, backed-up legacy save migration.
+
+    Default updates neutral 12.5 imports only. --refresh-editorial also
+    upgrades untouched V1 profiles. --rebase-developed is a separate opt-in
+    for played V1 saves: the V1-to-V2 baseline difference is added to current
+    2026 stats, preserving earned improvements instead of resetting them.
+    A V2 profile is never rebased twice.
+    """
     import shutil
     from pathlib import Path
     from .database import load_database,save_database
     target=Path(path)
-    if not target.is_file() or target.suffix!=".db":
+    if not target.is_file() or target.suffix.lower()!=".db":
         raise FileNotFoundError("Specify an existing .db campaign path")
     state=load_database(target)
-    identities=[w for w in state.wrestlers.values() if w.id.startswith(("rw_","wd_"))]
-    eligible=[w for w in identities if all(w.attributes[k]==12.5
-              for k in ("workrate","technique","moves","sequences","flair","selling"))]
+    identities=[w for w in state.wrestlers.values()
+                if w.id.startswith(("rw_","wd_"))]
+    v2_recorded={
+        x.get("wrestler_id") for x in state.activity_log
+        if x.get("type") in ("editorial_scouting_update","scouting_method")
+        and x.get("method",x.get("model"))==MODEL_VERSION}
+    eligible=[]
+    skipped_modified=0
+    for w in identities:
+        neutral=all(w.attributes[k]==12.5 for k in
+                    ("workrate","technique","moves","sequences","flair","selling"))
+        if neutral:
+            eligible.append((w,"replace"))
+        elif refresh_editorial and _v1_profile_unchanged(w) and w.id not in v2_recorded:
+            eligible.append((w,"replace"))
+        elif (rebase_developed and w.name in PROFILES and
+              w.id not in v2_recorded):
+            baseline,_=scouting_attributes(w.name)
+            # Don't mistake a current V2 source profile for an old V1 one
+            # in campaigns created before logging a model identifier.
+            if all(abs(w.attributes[k]-baseline[k])<.001 for k in PUBLIC_KEYS):
+                continue
+            eligible.append((w,"rebase"))
+        elif (refresh_editorial or rebase_developed) and w.name in PROFILES:
+            skipped_modified+=1
+    if dry_run:
+        return {"eligible":len(eligible),
+                "rebased":sum(mode=="rebase" for _,mode in eligible),
+                "skipped_modified":skipped_modified,
+                "save":str(target),"dry_run":True,
+                "note":"Preview only; save and backup unchanged"}
     if not eligible:
-        return {"updated":0,"note":"No unchanged placeholder profiles; save left untouched"}
-    backup=target.with_name(target.name+".before-scouting.bak")
+        return {"updated":0,"rebased":0,"skipped_modified":skipped_modified,
+                "note":"No eligible legacy profiles; save left untouched"}
+    backup=target.with_name(target.name+(
+        ".before-scouting-v2.bak"
+        if (refresh_editorial or rebase_developed)
+        else ".before-scouting.bak"))
     if backup.exists():
         raise FileExistsError("Refusing to overwrite an earlier backup: "+str(backup))
     shutil.copy2(target,backup)
-    count=0
-    for w in eligible:
-        if apply_scouting_to_wrestler(w):
-            count+=1
-            state.activity_log.append({"type":"editorial_scouting_update","wrestler_id":w.id,
-                         "method":MODEL_VERSION,"not_a_factual_personal_profile":True})
+    count=rebased=0
+    for w,mode in eligible:
+        prior,_=scouting_attributes_v1(w.name)
+        if mode=="rebase":
+            # Preserve both the pre-existing baseline and any real in-game
+            # training/storyline progression as offsets from the old values.
+            latest,_=scouting_attributes(w.name)
+            for key in PUBLIC_KEYS:
+                w.attributes[key]=round(clamp(
+                    latest[key]+(w.attributes[key]-prior[key]),0,25),2)
+            w.growth_aptitude,w.development_runway=_potential_factors(w)
+            rebased+=1
+            # Player-defined movesets are left untouched for played saves.
+        else:
+            previous_momentum=w.attributes["momentum"]
+            earned_momentum=(refresh_editorial and
+                not all(w.attributes[k]==12.5 for k in
+                        ("workrate","technique","moves","sequences","flair","selling"))
+                and abs(previous_momentum-prior["momentum"])>.001)
+            apply_scouting_to_wrestler(w,force=True)
+            if earned_momentum:
+                w.attributes["momentum"]=previous_momentum
+        count+=1
+        state.activity_log.append({
+            "type":"editorial_scouting_update","wrestler_id":w.id,
+            "method":MODEL_VERSION,"migration_mode":mode,
+            "not_a_factual_personal_profile":True})
     save_database(state,target)
-    return {"updated":count,"backup":str(backup),"save":str(target)}
+    return {"updated":count,"rebased":rebased,
+            "skipped_modified":skipped_modified,"backup":str(backup),
+            "save":str(target),"method":MODEL_VERSION}
 
 if __name__=="__main__":
     import argparse,json
     parser=argparse.ArgumentParser(description="Upgrade placeholder profiles in an existing campaign")
     parser.add_argument("--save",required=True)
+    parser.add_argument("--refresh-editorial",action="store_true",
+        help="Update unchanged old V1 scouting profiles as well as neutral imports")
+    parser.add_argument("--rebase-developed",action="store_true",
+        help="Explicitly rebase played old-V1 profiles while preserving skill gains")
+    parser.add_argument("--dry-run",action="store_true",
+        help="Preview the number of safe changes without modifying the save")
     args=parser.parse_args()
-    print(json.dumps(upgrade_saved_campaign(args.save),indent=2))
+    print(json.dumps(upgrade_saved_campaign(
+        args.save,refresh_editorial=args.refresh_editorial,
+        dry_run=args.dry_run,rebase_developed=args.rebase_developed),indent=2))

@@ -36,6 +36,8 @@ def test_seed_does_not_overwrite_or_replace_starter(tmp_path):
     state=load_game(dest)
     assert state.wrestlers["wd_Q44437"].name=="Sample Person"
     assert state.wrestlers["wd_Q44437"].company_id is None
-    assert state.wrestlers["wd_Q44437"].attributes["workrate"]==12.5
+    from wrestling_sim.scouting_data import scouting_attributes
+    assert state.wrestlers["wd_Q44437"].attributes["workrate"]==scouting_attributes("Sample Person")[0]["workrate"]
+    assert scouting_attributes("Sample Person")[1]["confidence"]=="synthetic"
     assert "steel" in state.wrestlers
     with pytest.raises(FileExistsError):seed_game(db,dest)

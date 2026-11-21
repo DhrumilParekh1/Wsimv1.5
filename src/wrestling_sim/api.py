@@ -21,7 +21,7 @@ from .sponsors import sponsor_offers, respond_sponsor, terminate_sponsor
 from .auto_narrative import auto_show, auto_dialogue
 from .narrative import config as ollama_config, status as ollama_status, rewrite_social, segment_recap, enhance_dialogue, enhance_highlights
 
-app = FastAPI(title="Fictional Wrestling Promotion Simulator API", version="1.11.0")
+app = FastAPI(title="Fictional Wrestling Promotion Simulator API", version="1.12.0")
 service = GameService(os.getenv('WRESTLING_SIM_SAVE', 'saves/game.db'))
 
 
@@ -349,7 +349,7 @@ def health():
 @app.get('/ui/build-info')
 def build_info():
     """Useful when the browser is attached to a stale or different server."""
-    return {'api_version':app.version,'frontend_version':'1.11.0',
+    return {'api_version':app.version,'frontend_version':'1.12.0',
             'save_path':str(service.path),
             'fresh_setup_eligible':__import__(
                 'wrestling_sim.company_creation',fromlist=['is_eligible_for_company_creation']
@@ -592,8 +592,14 @@ def ui_state():
             'wrestlers': [{**asdict(w), **portraits.get(w.id,{}),
                           'real_profile_source':profile_sources.get(w.id,{}).get("source_url"),
                           'age_source_verified':profile_sources.get(w.id,{}).get("birthdate_source_verified",False),
-                          'ratings_method':"editorial_2026_11_v1" if w.id.startswith("rw_") else
-                                           "game_estimate" if w.id.startswith("wd_") else "fictional",
+                          'ratings_method':__import__(
+                              'wrestling_sim.scouting_data',fromlist=['scouting_attributes']
+                           ).scouting_attributes(w.name)[1]["method"]
+                             if w.id.startswith(("rw_","wd_")) else "fictional",
+                          'scouting_review':__import__(
+                              'wrestling_sim.scouting_data',fromlist=['scouting_attributes']
+                           ).scouting_attributes(w.name)[1]
+                             if w.id.startswith(("rw_","wd_")) else None,
                           'ratings': {**rating_breakdown(w), 'market_dollars':__import__('wrestling_sim.front_office',fromlist=['monetary_value']).monetary_value(w,state)}}
                           for w in state.wrestlers.values()],
             'storylines': [asdict(s) for s in state.storylines.values()],

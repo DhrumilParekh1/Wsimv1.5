@@ -1,6 +1,8 @@
-# RINGSIDE — Wrestling Promotion Simulator (V1.10)
+# RINGSIDE — Wrestling Promotion Simulator (V1.12)
 
-**Latest development:** An original welcome screen, custom-company onboarding, sourced real-name wrestler rosters with differentiated editorial game-scouting ratings, licensed Wikimedia Commons image importing, championship tournaments, Triple Threat/Fatal Four-Way/Battle Royale matches, and offline automatic first-run initialization for new saves. The official version is V1.10; prior V1.3 notes below are historical.
+**Latest development:** Individually reviewed performance scouting profiles for 126 recognized real-world stage names, with candid strengths and limitations, public contextual evidence and safe existing-save migrations. See [V1.12 Scouting Guide](docs/V112_INDIVIDUAL_SCOUTING.md).
+
+**Earlier milestones:** An original welcome screen, custom-company onboarding, sourced real-name wrestler rosters with differentiated editorial game-scouting ratings, licensed Wikimedia Commons image importing, championship tournaments, Triple Threat/Fatal Four-Way/Battle Royale matches, and offline automatic first-run initialization for new saves. The official version is V1.10; prior V1.3 notes below are historical.
 
 To start a new Windows campaign from the repository folder:
 
